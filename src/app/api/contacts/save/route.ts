@@ -7,7 +7,8 @@
 //    各企業のNotionページ配下に子ページとして作成する
 //
 //  ■ 必要な環境変数
-//    NOTION_API_KEY — Notion統合トークン（RunWithと共通で使用可）
+//    NOTION_TOKEN または NOTION_API_KEY — Notion統合トークン
+//    （NOTION_TOKEN を優先して読み込む。どちらかが設定されていればOK）
 //
 //  ■ リクエスト（POST）
 //    {
@@ -62,12 +63,12 @@ function statusColor(s: string): string {
 }
 
 export async function POST(request: Request) {
-  // 環境変数チェック
-  const apiKey = process.env.NOTION_API_KEY
+  // 環境変数チェック（NOTION_TOKEN を優先、なければ NOTION_API_KEY を試みる）
+  const apiKey = process.env.NOTION_TOKEN ?? process.env.NOTION_API_KEY
   if (!apiKey) {
-    console.error('[contacts/save] NOTION_API_KEY が未設定です')
+    console.error('[contacts/save] NOTION_TOKEN / NOTION_API_KEY が未設定です')
     return NextResponse.json(
-      { error: 'Notion APIキーが設定されていません。Vercelの環境変数 NOTION_API_KEY を確認してください。' },
+      { error: 'Notion APIキーが設定されていません。Vercelの環境変数 NOTION_TOKEN を確認してください。' },
       { status: 500 },
     )
   }
