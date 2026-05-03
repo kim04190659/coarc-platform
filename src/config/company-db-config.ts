@@ -1,14 +1,49 @@
 // =====================================================
 //  src/config/company-db-config.ts
-//  企業別 Notion DB ID マッピング
+//  Notion DB ID マッピング（共通DB・企業別DB）
 //
-//  ■ このファイルの役割
-//    各企業が使用する Notion データベースの ID を管理する。
-//    新しい企業を追加するときは、companies.ts と合わせてここも更新すること。
+//  ■ 2種類のDB設計
 //
-//  ■ 未設定の場合
-//    DB ID が未設定（空文字）の場合は、その機能は「準備中」扱いになる。
+//  【共通DB（SHARED_NOTION_DBS）】
+//    全企業が同一のNotionDBを使用する。
+//    「企業名」プロパティで各社のデータを分離するマルチテナント方式。
+//    RunWithの「NOTION_HEARING_DB_ID」と同じ設計。
+//    → 新機能を追加したら、まずここにDBを作成してIDを登録する。
+//
+//  【企業別DB（COMPANY_DB_CONFIG）】
+//    企業ごとに専用DBを持つ場合のマッピング。
+//    企業固有の業種特化機能（ホテルの客室管理、医療の予約管理など）で使用。
+//    現時点ではすべて空（未設定）。
+//
+//  ■ DB追加手順（共通DB）
+//    1. Notionの「🔧 標準基盤 > 💾 標準DB」配下にDBを作成
+//    2. SHARED_NOTION_DBS にDBのIDを追記
+//    3. 対応するAPIルートで SHARED_NOTION_DBS[xxx] を参照
+//    4. CLAUDE.md の「Notion共通DB一覧」テーブルも更新する
 // =====================================================
+
+// ──────────────────────────────────────────────────
+//  全企業共通 Notion DB ID
+//  （企業名プロパティでフィルタリングして使用する）
+// ──────────────────────────────────────────────────
+export const SHARED_NOTION_DBS = {
+  /**
+   * 💬 問い合わせ管理DB（ServiceContact）
+   * Notion: 🔧 標準基盤 > 💬 問い合わせ管理DB | ServiceContact
+   * URL: https://www.notion.so/a54a964325924e8a8282201799f64092
+   *
+   * プロパティ: 件名/企業名/ステータス/優先度/カテゴリ/チャネル/
+   *             受付日時/顧客名/担当者/問い合わせID/問い合わせ内容/AI下書き/対応メモ
+   */
+  contacts: 'a54a964325924e8a8282201799f64092',
+
+  // 今後追加予定
+  // customerFeedback: '',  // 顧客フィードバックDB
+  // staffCondition:   '',  // 社員コンディションDB
+  // kpi:              '',  // KPI DB
+  // knowledgeBase:    '',  // ナレッジベースDB
+  // trainingLog:      '',  // 研修ログDB
+} as const
 
 export type CompanyDbConfig = {
   /** 顧客フィードバック DB */
@@ -37,8 +72,10 @@ export type CompanyDbConfig = {
  */
 export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
   'kitano-resort': {
-    customerFeedbackDbId: '',   // TODO: 北野リゾート展開時に設定
-    serviceContactDbId:   '',
+    customerFeedbackDbId: '',
+    // 💬 問い合わせ管理DB — 北野リゾートホテル専用
+    // Notion: 🏨 北野リゾートホテル Coarc > 💬 問い合わせ管理DB
+    serviceContactDbId:   'f049100f0ef842be818fdb28cdc6bf68',
     customerProfileDbId:  '',
     staffConditionDbId:   '',
     trainingLogDbId:      '',
@@ -48,8 +85,10 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
     companyProfileDbId:   '',
   },
   'sakura-medical': {
-    customerFeedbackDbId: '',   // TODO: さくら医療展開時に設定
-    serviceContactDbId:   '',
+    customerFeedbackDbId: '',
+    // 💬 問い合わせ管理DB — さくら医療グループ専用
+    // Notion: 🏥 さくら医療グループ Coarc > 💬 問い合わせ管理DB
+    serviceContactDbId:   'd4507f62e1b4477a9b22fc8e48d50d48',
     customerProfileDbId:  '',
     staffConditionDbId:   '',
     trainingLogDbId:      '',
@@ -60,7 +99,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
   },
   'mensho-food': {
     customerFeedbackDbId: '',
-    serviceContactDbId:   '',
+    // 💬 問い合わせ管理DB — 麺屋フードチェーン専用
+    // Notion: 🍽️ 麺屋フードチェーン Coarc > 💬 問い合わせ管理DB
+    serviceContactDbId:   '04c998d12c774d9a810d8ea18f9e1816',
     customerProfileDbId:  '',
     staffConditionDbId:   '',
     trainingLogDbId:      '',
@@ -71,7 +112,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
   },
   'hanamaru-store': {
     customerFeedbackDbId: '',
-    serviceContactDbId:   '',
+    // 💬 問い合わせ管理DB — ハナマルストア専用
+    // Notion: 🛒 ハナマルストア Coarc > 💬 問い合わせ管理DB
+    serviceContactDbId:   'fd2bd7550a95416fa4f2d609333ebea2',
     customerProfileDbId:  '',
     staffConditionDbId:   '',
     trainingLogDbId:      '',

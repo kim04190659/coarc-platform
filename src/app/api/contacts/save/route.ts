@@ -1,44 +1,48 @@
 // =====================================================
 //  src/app/api/contacts/save/route.ts
-//  問い合わせ対応をNotionに保存するAPIルート
+//  問い合わせ対応を Notion 企業別DBに保存するAPIルート
 //
-//  ■ 処理内容
-//    受け取った問い合わせ情報 + AI下書きを
-//    各企業のNotionページ配下に子ページとして作成する
+//  ■ 設計
+//    企業ごとに独立した「問い合わせ管理DB」を持つ方式。
+//    companyId → COMPANY_DB_CONFIG[companyId].serviceContactDbId
+//    で保存先DBを切り替える。
+//
+//  ■ 保存先
+//    各社の Notion ページ配下にある 💬 問い合わせ管理DB
+//    DB ID:  COMPANY_DB_CONFIG[companyId].serviceContactDbId
 //
 //  ■ 必要な環境変数
 //    NOTION_TOKEN または NOTION_API_KEY — Notion統合トークン
-//    （NOTION_TOKEN を優先して読み込む。どちらかが設定されていればOK）
 //
 //  ■ リクエスト（POST）
 //    {
 //      contactId:    string   // 問い合わせID（例: 'KR-001'）
-//      companyId:    string   // 企業ID（例: 'kitano-resort'）
-//      companyName:  string   // 企業表示名
-//      notionPageId: string   // 企業NotionページID（保存先の親）
+//      companyId:    string   // 企業ID（必須 — DB切り替えに使用）
 //      date:         string   // 受付日時（ISO 8601）
 //      channel:      string   // チャネル
 //      category:     string   // カテゴリ
 //      status:       string   // 対応ステータス
 //      priority:     string   // 優先度
 //      customerName: string   // 顧客名
+//      assignee?:    string   // 担当者
 //      subject:      string   // 件名
 //      content:      string   // 問い合わせ本文
-//      draft:        string   // AI下書き（編集済みも可）
+//      draft:        string   // AI下書き
 //    }
 //
 //  ■ レスポンス
-//    { success: true, pageUrl: string }   — 成功
-//    { error: string }                     — 失敗
+//    { success: true, pageUrl: string, pageId: string }  — 成功
+//    { error: string }                                    — 失敗
 // =====================================================
 
 import { NextResponse } from 'next/server'
+import { COMPANY_DB_CONFIG } from '@/config/company-db-config'
 
 // Notion API の定数
 const NOTION_API = 'https://api.notion.com/v1'
 const NOTION_VER = '2022-06-28'
 
-/** Notion API 共通ヘッダーを返す */
+/** Notion API 共通ヘッダー */
 function notionHeaders(apiKey: string) {
   return {
     'Authorization': `Bearer ${apiKey}`,
@@ -47,19 +51,9 @@ function notionHeaders(apiKey: string) {
   }
 }
 
-/** ISO日時を「YYYY年MM月DD日 HH:mm」にフォーマット */
-function formatDate(iso: string): string {
-  const d = new Date(iso)
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
-/** 優先度・ステータスに対応するNotionカラーを返す */
-function priorityColor(p: string): string {
-  return p === '高' ? 'red' : p === '中' ? 'orange' : 'gray'
-}
-
-function statusColor(s: string): string {
-  return s === '未対応' ? 'red' : s === '対応中' ? 'yellow' : 'green'
+/** rich_text プロパティ用のヘルパー（長いテキストを2000字でトリム） */
+function richText(text: string) {
+  return [{ type: 'text', text: { content: text.slice(0, 2000) } }]
 }
 
 export async function POST(request: Request) {
@@ -76,185 +70,79 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const {
-      contactId, companyName, notionPageId,
+      contactId, companyId,
       date, channel, category, status, priority,
-      customerName, subject, content, draft,
+      customerName, assignee, subject, content, draft,
     } = body
 
-    // ── Notionページを作成 ──────────────────────────────
-    // ページタイトル: [問い合わせ対応] チェックイン待ち時間が長すぎる
-    const pageTitle = `[問い合わせ対応] ${subject}`
-
-    const pageBody = {
-      parent: { page_id: notionPageId },
-      // ページのプロパティ（タイトルのみ。DBではなくページなのでプロパティはtitleのみ）
-      properties: {
-        title: {
-          title: [{ type: 'text', text: { content: pageTitle } }],
-        },
-      },
-      // ページ本文（ブロック構造）
-      children: [
-        // ── 受付情報テーブル ─────────────────────────────
-        {
-          object: 'block',
-          type: 'heading_2',
-          heading_2: {
-            rich_text: [{ type: 'text', text: { content: '📋 受付情報' } }],
-            color: 'default',
-          },
-        },
-        // 問い合わせID・受付日
-        {
-          object: 'block',
-          type: 'bulleted_list_item',
-          bulleted_list_item: {
-            rich_text: [
-              { type: 'text', text: { content: '問い合わせID: ' }, annotations: { bold: true } },
-              { type: 'text', text: { content: contactId } },
-            ],
-          },
-        },
-        {
-          object: 'block',
-          type: 'bulleted_list_item',
-          bulleted_list_item: {
-            rich_text: [
-              { type: 'text', text: { content: '受付日時: ' }, annotations: { bold: true } },
-              { type: 'text', text: { content: formatDate(date) } },
-            ],
-          },
-        },
-        // 企業・顧客
-        {
-          object: 'block',
-          type: 'bulleted_list_item',
-          bulleted_list_item: {
-            rich_text: [
-              { type: 'text', text: { content: '企業名: ' }, annotations: { bold: true } },
-              { type: 'text', text: { content: companyName } },
-            ],
-          },
-        },
-        {
-          object: 'block',
-          type: 'bulleted_list_item',
-          bulleted_list_item: {
-            rich_text: [
-              { type: 'text', text: { content: '顧客名: ' }, annotations: { bold: true } },
-              { type: 'text', text: { content: `${customerName} 様` } },
-            ],
-          },
-        },
-        // チャネル・カテゴリ
-        {
-          object: 'block',
-          type: 'bulleted_list_item',
-          bulleted_list_item: {
-            rich_text: [
-              { type: 'text', text: { content: 'チャネル: ' }, annotations: { bold: true } },
-              { type: 'text', text: { content: channel } },
-            ],
-          },
-        },
-        {
-          object: 'block',
-          type: 'bulleted_list_item',
-          bulleted_list_item: {
-            rich_text: [
-              { type: 'text', text: { content: 'カテゴリ: ' }, annotations: { bold: true } },
-              { type: 'text', text: { content: category } },
-            ],
-          },
-        },
-        // 優先度・ステータス（カラー付き）
-        {
-          object: 'block',
-          type: 'bulleted_list_item',
-          bulleted_list_item: {
-            rich_text: [
-              { type: 'text', text: { content: '優先度: ' }, annotations: { bold: true } },
-              {
-                type: 'text',
-                text: { content: priority },
-                annotations: { color: priorityColor(priority) as 'red' | 'orange' | 'gray' },
-              },
-            ],
-          },
-        },
-        {
-          object: 'block',
-          type: 'bulleted_list_item',
-          bulleted_list_item: {
-            rich_text: [
-              { type: 'text', text: { content: '対応ステータス: ' }, annotations: { bold: true } },
-              {
-                type: 'text',
-                text: { content: status },
-                annotations: { color: statusColor(status) as 'red' | 'yellow' | 'green' },
-              },
-            ],
-          },
-        },
-
-        // ── 問い合わせ本文 ───────────────────────────────
-        {
-          object: 'block',
-          type: 'heading_2',
-          heading_2: {
-            rich_text: [{ type: 'text', text: { content: '💬 お問い合わせ内容' } }],
-            color: 'default',
-          },
-        },
-        {
-          object: 'block',
-          type: 'quote',
-          quote: {
-            rich_text: [{ type: 'text', text: { content: content } }],
-            color: 'gray_background',
-          },
-        },
-
-        // ── AI下書き ────────────────────────────────────
-        {
-          object: 'block',
-          type: 'heading_2',
-          heading_2: {
-            rich_text: [{ type: 'text', text: { content: '🤖 AI返信下書き（要確認・編集後送信）' } }],
-            color: 'default',
-          },
-        },
-        {
-          object: 'block',
-          type: 'callout',
-          callout: {
-            rich_text: [{ type: 'text', text: { content: draft } }],
-            icon: { type: 'emoji', emoji: '✏️' },
-            color: 'blue_background',
-          },
-        },
-
-        // ── 備考欄（空白） ───────────────────────────────
-        {
-          object: 'block',
-          type: 'heading_2',
-          heading_2: {
-            rich_text: [{ type: 'text', text: { content: '📝 対応メモ' } }],
-            color: 'default',
-          },
-        },
-        {
-          object: 'block',
-          type: 'paragraph',
-          paragraph: {
-            rich_text: [{ type: 'text', text: { content: '（ここに対応内容・結果を記録してください）' } }],
-            color: 'gray',
-          },
-        },
-      ],
+    // ── companyId から企業別 DB ID を取得 ─────────────────
+    if (!companyId) {
+      return NextResponse.json(
+        { error: 'companyId が指定されていません。' },
+        { status: 400 },
+      )
+    }
+    const dbId = COMPANY_DB_CONFIG[companyId]?.serviceContactDbId
+    if (!dbId) {
+      console.error(`[contacts/save] companyId "${companyId}" の serviceContactDbId が未設定です`)
+      return NextResponse.json(
+        { error: `企業ID "${companyId}" の問い合わせDBが未設定です。company-db-config.ts を確認してください。` },
+        { status: 500 },
+      )
     }
 
-    // Notion APIを呼び出してページを作成
+    const pageBody = {
+      parent: { database_id: dbId },
+      properties: {
+        // TITLE プロパティ（件名）
+        '件名': {
+          title: richText(subject),
+        },
+        // SELECT プロパティ（ステータス）
+        // ※ 企業別DBのため「企業名」プロパティは不要
+        'ステータス': {
+          select: { name: status },
+        },
+        // SELECT プロパティ（優先度）
+        '優先度': {
+          select: { name: priority },
+        },
+        // SELECT プロパティ（カテゴリ）
+        'カテゴリ': {
+          select: { name: category },
+        },
+        // SELECT プロパティ（チャネル）
+        'チャネル': {
+          select: { name: channel },
+        },
+        // DATE プロパティ（受付日時）
+        '受付日時': {
+          date: { start: date },
+        },
+        // RICH_TEXT プロパティ（顧客名）
+        '顧客名': {
+          rich_text: richText(customerName),
+        },
+        // RICH_TEXT プロパティ（担当者）
+        '担当者': {
+          rich_text: richText(assignee ?? '未割当'),
+        },
+        // RICH_TEXT プロパティ（問い合わせID）
+        '問い合わせID': {
+          rich_text: richText(contactId),
+        },
+        // RICH_TEXT プロパティ（問い合わせ内容）
+        '問い合わせ内容': {
+          rich_text: richText(content),
+        },
+        // RICH_TEXT プロパティ（AI下書き）
+        'AI下書き': {
+          rich_text: richText(draft),
+        },
+      },
+    }
+
+    // Notion API を呼び出してDBにレコードを追加
     const res = await fetch(`${NOTION_API}/pages`, {
       method: 'POST',
       headers: notionHeaders(apiKey),
@@ -273,7 +161,7 @@ export async function POST(request: Request) {
     const page = await res.json()
     const pageUrl = page.url ?? `https://notion.so/${page.id?.replace(/-/g, '')}`
 
-    return NextResponse.json({ success: true, pageUrl })
+    return NextResponse.json({ success: true, pageUrl, pageId: page.id })
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
