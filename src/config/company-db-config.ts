@@ -57,9 +57,26 @@ export const SHARED_NOTION_DBS = {
    */
   kpiGoals: '99fc69ac37064ecebec8e14579bda417',
 
+  /**
+   * 👤 社員マスタDB（StaffProfile）— Sprint 9 追加
+   * Notion: 🔧 標準基盤 > 👤 社員マスタDB | StaffProfile
+   *
+   * プロパティ: 社員名/企業名/部署/役職/得意機能/スキルセット/資格/在籍状況/入社年
+   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
+   */
+  staffProfile: '7a9d0e9e2d1b4d6ab8caef909abb8b1b',
+
+  /**
+   * 💚 社員コンディションDB（StaffCondition）— Sprint 9 追加
+   * Notion: 🔧 標準基盤 > 💚 社員コンディションDB | StaffCondition
+   *
+   * プロパティ: 件名/企業名/社員名/コンディション/業務負荷/勤務形態/記録日/メモ/AIコメント
+   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
+   */
+  staffCondition: '9016c6d2857b4afcb55122d53671445d',
+
   // 今後追加予定
-  // staffCondition: '',  // 社員コンディションDB
-  // trainingLog:    '',  // 研修ログDB
+  // trainingLog: '',  // 研修ログDB
 } as const
 
 export type CompanyDbConfig = {
