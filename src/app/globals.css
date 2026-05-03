@@ -1,3 +1,2 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4 の記法（v3 の @tailwind base/components/utilities とは異なる） */
+@import "tailwindcss";
