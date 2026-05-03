@@ -72,7 +72,9 @@ export type CompanyDbConfig = {
  */
 export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
   'kitano-resort': {
-    customerFeedbackDbId: '',
+    // 💬 顧客フィードバックDB — 北野リゾートホテル専用
+    // Notion: 🏨 北野リゾートホテル Coarc > 💬 顧客フィードバックDB
+    customerFeedbackDbId: 'f267462f4b104a0690e2d310353b30d8',
     // 💬 問い合わせ管理DB — 北野リゾートホテル専用
     // Notion: 🏨 北野リゾートホテル Coarc > 💬 問い合わせ管理DB
     serviceContactDbId:   'f049100f0ef842be818fdb28cdc6bf68',
@@ -85,7 +87,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
     companyProfileDbId:   '',
   },
   'sakura-medical': {
-    customerFeedbackDbId: '',
+    // 💬 顧客フィードバックDB — さくら医療グループ専用
+    // Notion: 🏥 さくら医療グループ Coarc > 💬 顧客フィードバックDB
+    customerFeedbackDbId: '7a4444ffa8c34e3f866aedecfcb2c95a',
     // 💬 問い合わせ管理DB — さくら医療グループ専用
     // Notion: 🏥 さくら医療グループ Coarc > 💬 問い合わせ管理DB
     serviceContactDbId:   'd4507f62e1b4477a9b22fc8e48d50d48',
@@ -98,7 +102,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
     companyProfileDbId:   '',
   },
   'mensho-food': {
-    customerFeedbackDbId: '',
+    // 💬 顧客フィードバックDB — 麺屋フードチェーン専用
+    // Notion: 🍽️ 麺屋フードチェーン Coarc > 💬 顧客フィードバックDB
+    customerFeedbackDbId: '30b8a58e10d34cfbb33cd3cabb3f953b',
     // 💬 問い合わせ管理DB — 麺屋フードチェーン専用
     // Notion: 🍽️ 麺屋フードチェーン Coarc > 💬 問い合わせ管理DB
     serviceContactDbId:   '04c998d12c774d9a810d8ea18f9e1816',
@@ -111,7 +117,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
     companyProfileDbId:   '',
   },
   'hanamaru-store': {
-    customerFeedbackDbId: '',
+    // 💬 顧客フィードバックDB — ハナマルストア専用
+    // Notion: 🛒 ハナマルストア Coarc > 💬 顧客フィードバックDB
+    customerFeedbackDbId: 'eb5db63ce8784d71b33888a244fd86b7',
     // 💬 問い合わせ管理DB — ハナマルストア専用
     // Notion: 🛒 ハナマルストア Coarc > 💬 問い合わせ管理DB
     serviceContactDbId:   'fd2bd7550a95416fa4f2d609333ebea2',
