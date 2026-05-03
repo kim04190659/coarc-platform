@@ -159,14 +159,43 @@ export default function ContactsPage() {
     setNotionUrl('')
   }, [companyId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** ステータスを変更してlocalStorageに保存する */
+  /**
+   * ステータスを変更する
+   * 1. localStorageに即時保存（画面の反映は瞬時）
+   * 2. Notion DBのレコードも非同期で更新する
+   */
   const handleStatusChange = useCallback((contactId: string, newStatus: ContactStatus) => {
+    // ── ① localStorageに即時保存 ──
     setStatusOverrides(prev => {
       const next = { ...prev, [contactId]: newStatus }
       localStorage.setItem(LS_KEY, JSON.stringify(next))
       return next
     })
-  }, [])
+
+    // ── ② Notion DBを非同期更新 ──
+    setSyncingContactId(contactId)
+    setSyncResultMap(prev => {
+      const next = { ...prev }
+      delete next[contactId]   // 前回の結果をリセット
+      return next
+    })
+
+    fetch('/api/contacts/update-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyId, contactId, status: newStatus }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        setSyncResultMap(prev => ({ ...prev, [contactId]: data.success ? 'ok' : 'error' }))
+      })
+      .catch(() => {
+        setSyncResultMap(prev => ({ ...prev, [contactId]: 'error' }))
+      })
+      .finally(() => {
+        setSyncingContactId(prev => prev === contactId ? null : prev)
+      })
+  }, [companyId])
 
   /** オーバーライドを適用した問い合わせ一覧 */
   const contacts = baseContacts.map(c => ({
@@ -187,10 +216,14 @@ export default function ContactsPage() {
   const [isDrafting, setIsDrafting] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  // Notion保存
+  // Notion保存（AI下書き）
   const [isSaving, setIsSaving] = useState(false)
   const [notionUrl, setNotionUrl] = useState<string>('')
   const [saveError, setSaveError] = useState<string>('')
+
+  // ステータス Notion 同期状態
+  const [syncingContactId, setSyncingContactId] = useState<string | null>(null)
+  const [syncResultMap, setSyncResultMap] = useState<Record<string, 'ok' | 'error'>>({})
 
   const filtered = contacts.filter(c => {
     if (filterStatus !== 'all' && c.status !== filterStatus) return false
@@ -394,10 +427,20 @@ export default function ContactsPage() {
                 </select>
                 <ChevronDown className="w-3 h-3 absolute right-1 pointer-events-none text-gray-500" />
               </div>
-              {/* ステータス変更されたことを示すインジケーター */}
-              {statusOverrides[selected.id] && (
-                <span className="text-xs text-indigo-500 flex items-center gap-1">
-                  <Check className="w-3 h-3" /> 変更済み
+              {/* ステータス Notion 同期インジケーター */}
+              {syncingContactId === selected.id && (
+                <span className="text-xs text-gray-400 flex items-center gap-1 animate-pulse">
+                  <Clock className="w-3 h-3" /> Notion反映中...
+                </span>
+              )}
+              {syncingContactId !== selected.id && syncResultMap[selected.id] === 'ok' && (
+                <span className="text-xs text-green-600 flex items-center gap-1">
+                  <Check className="w-3 h-3" /> Notion反映済み
+                </span>
+              )}
+              {syncingContactId !== selected.id && syncResultMap[selected.id] === 'error' && (
+                <span className="text-xs text-red-500 flex items-center gap-1">
+                  ⚠ Notion反映失敗
                 </span>
               )}
             </div>
