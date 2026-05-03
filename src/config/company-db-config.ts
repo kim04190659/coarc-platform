@@ -37,12 +37,29 @@ export const SHARED_NOTION_DBS = {
    */
   contacts: 'a54a964325924e8a8282201799f64092',
 
+  /**
+   * 🔍 ナレッジベースDB（KnowledgeBase）— Sprint 8 追加
+   * Notion: 🔧 標準基盤 > 🔍 ナレッジベースDB | KnowledgeBase
+   * URL: https://www.notion.so/bc52a28d7bbc48d986283146dd7adc97
+   *
+   * プロパティ: 件名/企業名/カテゴリ/対応内容/キーワード/有効/登録日
+   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
+   */
+  knowledgeBase: 'bc52a28d7bbc48d986283146dd7adc97',
+
+  /**
+   * 📈 KPI目標DB（KpiGoals）— Sprint 8 追加
+   * Notion: 🔧 標準基盤 > 📈 KPI目標DB | KpiGoals
+   * URL: https://www.notion.so/99fc69ac37064ecebec8e14579bda417
+   *
+   * プロパティ: KPI名/企業名/KPI種別/目標値/単位/期間/更新日
+   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
+   */
+  kpiGoals: '99fc69ac37064ecebec8e14579bda417',
+
   // 今後追加予定
-  // customerFeedback: '',  // 顧客フィードバックDB
-  // staffCondition:   '',  // 社員コンディションDB
-  // kpi:              '',  // KPI DB
-  // knowledgeBase:    '',  // ナレッジベースDB
-  // trainingLog:      '',  // 研修ログDB
+  // staffCondition: '',  // 社員コンディションDB
+  // trainingLog:    '',  // 研修ログDB
 } as const
 
 export type CompanyDbConfig = {
