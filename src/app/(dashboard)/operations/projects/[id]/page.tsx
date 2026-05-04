@@ -2,7 +2,7 @@
 
 // =====================================================
 //  src/app/(dashboard)/operations/projects/[id]/page.tsx
-//  プロジェクト詳細ページ
+//  プロジェクト詳細ページ（Sprint 13 対応）
 //
 //  ■ 機能概要
 //    - プロジェクト情報パネル（依頼内容・担当者・期日・優先度）
@@ -10,7 +10,8 @@
 //    - 進捗バー（タスク完了率）
 //    - 進捗メモ編集 → Notion 即時保存
 //    - ステータス変更 → Notion 即時反映
-//    - 「AIで計画を生成」ボタン（Sprint 13 で実装）
+//    - 「AIで計画を生成」→ Haiku がタスク一括生成 → Notion 保存（Sprint 13）
+//    - AI 進捗アドバイスパネル（Sprint 13）
 // =====================================================
 
 import { useState, useEffect, useCallback, use } from 'react'
@@ -21,7 +22,16 @@ import {
   ArrowLeft, FolderOpen, User, Calendar, AlertCircle,
   CheckCircle2, Circle, Clock, Loader2, Save,
   ChevronDown, Sparkles, FileText, Package,
+  AlertTriangle, Lightbulb, RefreshCw, Shield,
 } from 'lucide-react'
+
+// ── AI 進捗アドバイスの型 ───────────────────────────
+type AiAdvice = {
+  riskLevel:   'high' | 'medium' | 'low'
+  summary:     string
+  nextActions: string[]
+  warnings:    string[]
+}
 
 // ── 優先度バッジ ─────────────────────────────────────
 
@@ -163,6 +173,88 @@ function TaskRow({
   )
 }
 
+// ── AI 進捗アドバイスパネル ──────────────────────────
+
+function AdvicePanel({
+  advice,
+  onRefresh,
+  refreshing,
+}: {
+  advice: AiAdvice
+  onRefresh: () => void
+  refreshing: boolean
+}) {
+  // リスクレベルの色設定
+  const riskConfig = {
+    high:   { bg: 'bg-red-50',    border: 'border-red-200',   text: 'text-red-700',   badge: 'bg-red-100 text-red-700',   label: '⚠️ 高リスク',   icon: AlertTriangle },
+    medium: { bg: 'bg-amber-50',  border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-700', label: '⚡ 要注意',    icon: AlertCircle   },
+    low:    { bg: 'bg-green-50',  border: 'border-green-200', text: 'text-green-700', badge: 'bg-green-100 text-green-700', label: '✅ 順調',       icon: Shield        },
+  }
+  const cfg = riskConfig[advice.riskLevel] ?? riskConfig.medium
+  const Icon = cfg.icon
+
+  return (
+    <div className={`${cfg.bg} border ${cfg.border} rounded-xl p-4 space-y-3`}>
+      {/* ヘッダー */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Icon size={16} className={cfg.text} />
+          <span className={`text-sm font-bold ${cfg.text}`}>AI 進捗アドバイス</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.badge}`}>
+            {cfg.label}
+          </span>
+        </div>
+        <button
+          onClick={onRefresh}
+          disabled={refreshing}
+          title="アドバイスを更新"
+          className="text-gray-400 hover:text-gray-600 disabled:opacity-40"
+        >
+          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      {/* サマリー */}
+      <p className={`text-sm ${cfg.text}`}>{advice.summary}</p>
+
+      {/* 次のアクション */}
+      {advice.nextActions.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-600 flex items-center gap-1 mb-1.5">
+            <Lightbulb size={12} />今すぐやること
+          </p>
+          <ul className="space-y-1">
+            {advice.nextActions.map((action, i) => (
+              <li key={i} className="text-xs text-gray-700 flex items-start gap-2">
+                <span className="flex-shrink-0 w-4 h-4 rounded-full bg-white border border-current flex items-center justify-center text-xs font-bold mt-0.5">
+                  {i + 1}
+                </span>
+                {action}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* 警告 */}
+      {advice.warnings.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-600 flex items-center gap-1 mb-1.5">
+            <AlertTriangle size={12} />リスク・注意
+          </p>
+          <ul className="space-y-1">
+            {advice.warnings.map((w, i) => (
+              <li key={i} className="text-xs text-red-600 flex items-start gap-1.5">
+                <span className="flex-shrink-0">•</span>{w}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── メインページ ─────────────────────────────────────
 
 export default function ProjectDetailPage({
@@ -174,14 +266,23 @@ export default function ProjectDetailPage({
   const router = useRouter()
   const { companyId } = useCompany()
 
-  const [project,  setProject]  = useState<Project | null>(null)
-  const [tasks,    setTasks]    = useState<ProjectTask[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [noteEdit, setNoteEdit] = useState(false)
-  const [noteText, setNoteText] = useState('')
-  const [noteSaving, setNoteSaving] = useState(false)
+  const [project,      setProject]      = useState<Project | null>(null)
+  const [tasks,        setTasks]        = useState<ProjectTask[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [noteEdit,     setNoteEdit]     = useState(false)
+  const [noteText,     setNoteText]     = useState('')
+  const [noteSaving,   setNoteSaving]   = useState(false)
   const [statusSaving, setStatusSaving] = useState(false)
-  const [showDesc, setShowDesc] = useState(false)
+  const [showDesc,     setShowDesc]     = useState(false)
+
+  // ── Sprint 13: AI 計画生成 ──────────────────────────
+  const [planGenerating, setPlanGenerating] = useState(false)
+  const [planMessage,    setPlanMessage]    = useState('')
+
+  // ── Sprint 13: AI 進捗アドバイス ────────────────────
+  const [advice,          setAdvice]          = useState<AiAdvice | null>(null)
+  const [adviceLoading,   setAdviceLoading]   = useState(false)
+  const [adviceError,     setAdviceError]     = useState('')
 
   // ── データ取得 ──────────────────────────────────────
   const fetchProject = useCallback(async () => {
@@ -243,6 +344,86 @@ export default function ProjectDetailPage({
     }
   }
 
+  // ── Sprint 13: AI 計画生成 ──────────────────────────
+  const generatePlan = async () => {
+    if (!project) return
+    if (!window.confirm('AIにタスク計画を自動生成させますか？\n現在のタスクに追加する形で生成されます。')) return
+
+    setPlanGenerating(true)
+    setPlanMessage('')
+    try {
+      const res = await fetch('/api/projects/plan-ai', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          projectId:   id,
+          projectName: project.projectName,
+          description: project.description,
+          assignee:    project.assignee,
+          startDate:   project.startDate,
+          dueDate:     project.dueDate,
+          companyId,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json() as { error?: string }
+        throw new Error(err.error ?? 'AI計画生成に失敗しました')
+      }
+      const data = await res.json() as { count: number }
+      setPlanMessage(`✅ ${data.count}件のタスクをAIが生成しました！`)
+      // タスク一覧を再取得
+      await fetchProject()
+    } catch (e) {
+      setPlanMessage(`❌ ${e instanceof Error ? e.message : '生成に失敗しました。再試行してください。'}`)
+    } finally {
+      setPlanGenerating(false)
+    }
+  }
+
+  // ── Sprint 13: AI 進捗アドバイス取得 ────────────────
+  const fetchAdvice = useCallback(async () => {
+    if (!project) return
+    setAdviceLoading(true)
+    setAdviceError('')
+    try {
+      const res = await fetch('/api/projects/progress-ai', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          projectName: project.projectName,
+          description: project.description,
+          status:      project.status,
+          dueDate:     project.dueDate,
+          tasks: tasks.map(t => ({
+            taskName:  t.taskName,
+            status:    t.status,
+            priority:  t.priority,
+            dueDate:   t.dueDate,
+            assignee:  t.assignee,
+          })),
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json() as { error?: string }
+        throw new Error(err.error ?? 'アドバイス取得失敗')
+      }
+      const data = await res.json() as AiAdvice
+      setAdvice(data)
+    } catch (e) {
+      setAdviceError(e instanceof Error ? e.message : 'AI分析に失敗しました')
+    } finally {
+      setAdviceLoading(false)
+    }
+  }, [project, tasks])
+
+  // タスクが1件以上あればページ読み込み時に自動で進捗アドバイスを取得
+  useEffect(() => {
+    if (tasks.length > 0 && !advice && !adviceLoading) {
+      fetchAdvice()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks.length])
+
   // ── ローディング ─────────────────────────────────────
   if (loading) {
     return (
@@ -260,8 +441,8 @@ export default function ProjectDetailPage({
     )
   }
 
-  const doneCount  = tasks.filter(t => t.status === '完了').length
-  const isOverdue  = project.dueDate && project.status !== '完了'
+  const doneCount = tasks.filter(t => t.status === '完了').length
+  const isOverdue = project.dueDate && project.status !== '完了'
     ? new Date(project.dueDate) < new Date()
     : false
 
@@ -373,26 +554,65 @@ export default function ProjectDetailPage({
         )}
       </div>
 
-      {/* AI計画生成ボタン（Sprint 13 プレースホルダー） */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-indigo-800 flex items-center gap-1.5">
-            <Sparkles size={15} />AIでプロジェクト計画を自動生成
-          </p>
-          <p className="text-xs text-indigo-600 mt-0.5">
-            依頼内容をもとにタスク・期限・成果物をAIが一括作成します
-          </p>
+      {/* ── AI 計画生成パネル ─────────────────────────── */}
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-indigo-800 flex items-center gap-1.5">
+              <Sparkles size={15} />AIでプロジェクト計画を自動生成
+            </p>
+            <p className="text-xs text-indigo-600 mt-0.5">
+              依頼内容をもとにタスク・期限・成果物をAIが一括作成します
+            </p>
+          </div>
+          <button
+            onClick={generatePlan}
+            disabled={planGenerating || !project.description}
+            className="flex-shrink-0 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+            title={!project.description ? '依頼内容が未記入です' : 'AIがタスクを自動生成します'}
+          >
+            {planGenerating
+              ? <><Loader2 size={14} className="animate-spin" />生成中...</>
+              : <><Sparkles size={14} />計画を生成</>
+            }
+          </button>
         </div>
-        <button
-          disabled
-          className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg opacity-40 cursor-not-allowed flex items-center gap-2"
-          title="Sprint 13 で実装予定"
-        >
-          <Sparkles size={14} />計画を生成（準備中）
-        </button>
+
+        {/* 生成結果メッセージ */}
+        {planMessage && (
+          <p className={`mt-3 text-sm px-3 py-2 rounded-lg ${planMessage.startsWith('✅') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+            {planMessage}
+          </p>
+        )}
       </div>
 
-      {/* タスク一覧 */}
+      {/* ── AI 進捗アドバイスパネル ───────────────────── */}
+      {tasks.length > 0 && (
+        <div>
+          {adviceLoading && (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 size={16} className="animate-spin text-indigo-400" />
+              AIが進捗を分析中...
+            </div>
+          )}
+          {!adviceLoading && adviceError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
+              <p className="text-sm text-red-600">{adviceError}</p>
+              <button
+                onClick={fetchAdvice}
+                className="text-xs text-red-600 hover:underline flex items-center gap-1"
+              >
+                <RefreshCw size={12} />再試行
+              </button>
+            </div>
+          )}
+          {!adviceLoading && advice && (
+            <AdvicePanel advice={advice} onRefresh={fetchAdvice} refreshing={adviceLoading} />
+          )}
+        </div>
+      )}
+
+      {/* ── タスク一覧 ──────────────────────────────── */}
       <div className="space-y-4">
 
         {/* 進行中タスク */}
@@ -437,20 +657,21 @@ export default function ProjectDetailPage({
           </section>
         )}
 
+        {/* タスクが0件のとき */}
         {tasks.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <Circle size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">タスクがありません</p>
-            <p className="text-xs mt-1">「AIで計画を生成」でタスクを自動作成できます（Sprint 13）</p>
+          <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-dashed border-gray-200">
+            <Sparkles size={40} className="mx-auto mb-3 opacity-20 text-indigo-400" />
+            <p className="text-sm font-medium">タスクがまだありません</p>
+            <p className="text-xs mt-1">上の「計画を生成」ボタンでAIがタスクを自動作成します</p>
           </div>
         )}
       </div>
 
-      {/* 進捗メモ */}
+      {/* ── 進捗メモ ─────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-            <FileText size={15} className="text-gray-400" />進捗メモ・AI アドバイス
+            <FileText size={15} className="text-gray-400" />進捗メモ
           </h2>
           {!noteEdit ? (
             <button
