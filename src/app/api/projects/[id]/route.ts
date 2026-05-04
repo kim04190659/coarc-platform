@@ -53,7 +53,9 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   try {
-    const { SHARED_NOTION_DBS } = await import('@/config/company-db-config')
+    // ✅ 企業別DB方式: companyId から企業専用 タスクDB IDを取得
+    const { getCompanyDbConfig } = await import('@/config/company-db-config')
+    const dbConfig = getCompanyDbConfig(companyId)
 
     // ── プロジェクト1件を Notion ページIDで取得 ──
     const pageRes = await fetch(`${NOTION_API}/pages/${id}`, {
@@ -68,21 +70,13 @@ export async function GET(request: Request, context: RouteContext) {
     const props = page.properties as PropMap
     const projectName = getText(props, 'プロジェクト名')
 
-    // ── 紐づくタスクを取得 ───────────────────────
-    const taskFilter: Record<string, unknown>[] = [
-      { property: 'プロジェクト名', rich_text: { contains: projectName } },
-    ]
-    if (companyId) {
-      const { getCompanyById } = await import('@/config/companies')
-      const company = getCompanyById(companyId)
-      taskFilter.push({ property: '企業名', select: { equals: company.shortName } })
-    }
-
-    const taskRes = await fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.projectTask}/query`, {
+    // ── 紐づくタスクを企業別DBから取得 ──────────
+    // ✅ 企業専用DBにクエリ（企業名フィルタなし・プロジェクト名のみでフィルタ）
+    const taskRes = await fetch(`${NOTION_API}/databases/${dbConfig.projectTaskDbId}/query`, {
       method:  'POST',
       headers: notionHeaders(notionKey),
       body:    JSON.stringify({
-        filter: { and: taskFilter },
+        filter: { property: 'プロジェクト名', rich_text: { contains: projectName } },
         sorts:  [
           { property: '優先度', direction: 'descending' },
           { property: '期限',   direction: 'ascending'  },

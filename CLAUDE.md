@@ -21,17 +21,25 @@
 🌿 Coarc Platform（ルートページ）
 │
 ├── 🔧 標準基盤 | Coarc Platform 設計
-│   ├── 💾 標準DB（10本）
 │   ├── 📐 オントロジー設計
 │   ├── 🛠️ 実装・システム設計書
 │   └── 🔄 開発管理
+│        └── 🗂️ スプリント管理DB
 │
 ├── 🏢 企業・組織 展開ページ    ← ★ウィザードで新規企業が追加される場所
-│   ├── 📋 ヒアリング結果管理DB（全企業共通）
+│   ├── 📋 ヒアリング結果管理DB（全企業共通・唯一の例外）
 │   ├── 🏨 北野リゾートホテル Coarc
-│   ├── 🏥 さくら医療グループ Coarc
-│   ├── 🍽️ 麺屋フードチェーン Coarc
-│   └── 🛒 ハナマルストア Coarc
+│   │   ├── 👤 社員マスタDB
+│   │   ├── 💚 社員コンディションDB
+│   │   ├── 📈 KPI目標DB
+│   │   ├── 🔍 ナレッジベースDB
+│   │   ├── 📁 プロジェクト管理DB
+│   │   ├── ✅ プロジェクトタスクDB
+│   │   ├── 💬 顧客フィードバックDB
+│   │   └── 💬 問い合わせ管理DB
+│   ├── 🏥 さくら医療グループ Coarc  （同構造）
+│   ├── 🍽️ 麺屋フードチェーン Coarc  （同構造）
+│   └── 🛒 ハナマルストア Coarc       （同構造）
 │
 └── 🎯 営業・提案活動
 ```
@@ -46,6 +54,12 @@
     🗂️ スプリント管理DB:   f44343cd14214709b6f17bd910681f99
 🏢 企業展開ページ:         355960a91e2381b49cb2fa02dec4ea5a  ← NOTION_PARENT_PAGE_ID
 🎯 営業・提案活動:         355960a91e2381488846e433a48bd808
+
+■ 企業ページID
+北野リゾートホテル:        355960a91e23810fb38fe9221ae8ea71
+さくら医療グループ:        355960a91e238115a0b4feeae1a9bc32
+麺屋フードチェーン:        355960a91e2381bd8b91f3edff9c9dc5
+ハナマルストア:            355960a91e2381f997f5ccd8ddd1c7db
 ```
 
 ---
@@ -64,7 +78,7 @@ ANTHROPIC_API_KEY     = sk-ant-...
 
 ```
 src/config/companies.ts          — 展開済み企業マスタ定義
-src/config/company-db-config.ts  — 企業別 Notion DB ID マッピング
+src/config/company-db-config.ts  — 企業別 Notion DB ID マッピング（最重要）
 src/config/features.ts           — サイドメニュー定義
 src/contexts/CompanyContext.tsx  — 選択中企業のグローバル状態
 src/components/layout/Sidebar.tsx         — 左サイドバー
@@ -73,17 +87,87 @@ src/components/layout/CompanySelector.tsx — ヘッダーの企業切り替えU
 
 ---
 
+## Notion DB 設計原則（最重要・設計の根幹）
+
+### ❌ 絶対禁止：共通DB（SHARED_NOTION_DBS）方式
+
+```
+// ❌ やってはいけない設計
+SHARED_NOTION_DBS.staffProfile   // 全企業のデータが1つのDBに混在
+SHARED_NOTION_DBS.projectTask    // 「企業名」で分離するだけでは不十分
+
+// ❌ 企業名フィルタで分離するクエリも禁止
+filter: { property: '企業名', select: { equals: company.shortName } }
+```
+
+**なぜ禁止か:**
+- データが混在すると将来的な分離が困難
+- 企業間でデータが誤って見える可能性
+- Notion上で企業が自分のデータだけ管理できない
+- アクセス権限の粒度がDB単位なので、企業別DBでないと権限設計ができない
+
+### ✅ 正しい設計：全DB企業別方式
+
+```
+// ✅ 正しい設計
+COMPANY_DB_CONFIG['kitano-resort'].staffProfileDbId    // 北野リゾート専用
+COMPANY_DB_CONFIG['sakura-medical'].staffProfileDbId   // さくら医療専用
+// 同じ機能でも企業ごとに独立したNotionデータベースを持つ
+```
+
+**メリット:**
+- 企業ごとにNotionの閲覧権限を設定できる
+- DBが汚染されない（他社データが混入しない）
+- 企業ページ配下に全DBが集約され、Notion上で管理しやすい
+- 企業の解約時にそのNotionページを削除するだけで完結
+
+### 企業別DBの構造（全企業共通のスキーマ、データは分離）
+
+各企業ページ（例: 🏨 北野リゾートホテル Coarc）の配下に、以下のDBを作成する:
+
+| DB名 | `CompanyDbConfig` キー | 用途 |
+|------|------------------------|------|
+| 👤 社員マスタDB | `staffProfileDbId` | 社員情報・スキル |
+| 💚 社員コンディションDB | `staffConditionDbId` | Well-Being記録 |
+| 📈 KPI目標DB | `kpiGoalsDbId` | 目標・実績管理 |
+| 🔍 ナレッジベースDB | `knowledgeBaseDbId` | 対応ナレッジ |
+| 📁 プロジェクト管理DB | `projectManagementDbId` | 業務プロジェクト |
+| ✅ プロジェクトタスクDB | `projectTaskDbId` | タスク・成果物 |
+| 💬 顧客フィードバックDB | `customerFeedbackDbId` | CS満足度 |
+| 💬 問い合わせ管理DB | `serviceContactDbId` | 顧客問い合わせ |
+
+> **注意**: `企業名` プロパティは企業別DBには不要。DBそのものが企業を識別する。
+
+### APIルートの実装ルール
+
+```typescript
+// ✅ 正しい実装
+import { getCompanyDbConfig } from '@/config/company-db-config'
+const { searchParams } = new URL(req.url)
+const companyId = searchParams.get('companyId') ?? 'kitano-resort'
+const dbConfig = getCompanyDbConfig(companyId)
+
+// 企業専用DBに直接クエリ（フィルタ不要）
+const res = await fetch(`${NOTION_API}/databases/${dbConfig.staffProfileDbId}/query`, {
+  body: JSON.stringify({ /* 企業名フィルタなし */ }),
+})
+
+// ❌ 絶対禁止
+import { SHARED_NOTION_DBS } from '@/config/company-db-config'
+const res = await fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.staffProfile}/query`, {
+  body: JSON.stringify({
+    filter: { property: '企業名', select: { equals: company.shortName } }, // ❌
+  }),
+})
+```
+
+### 唯一の例外：ヒアリング結果管理DB
+
+ヒアリングは Coarc 側（管理者）が全企業横断で管理するため、共通DBで可。
+
+---
+
 ## マルチテナント設計方針
-
-### RunWith との対応関係
-
-| RunWith | Coarc | 説明 |
-|---|---|---|
-| 住民 | 顧客 | 問い合わせ・フィードバックの送り手 |
-| 自治体職員 | 社員 | エクセレント対応を行う人 |
-| 町長・議会 | 経営者・部門長 | AI顧問の提言を受ける人 |
-| 自治体 | 企業（テナント） | マルチテナントの単位 |
-| municipalityId | companyId | テナント識別子 |
 
 ### テナント識別の仕組み
 
@@ -96,76 +180,41 @@ CompanyContext（React Context）に companyId を保存
   ↓
 APIコール時に ?companyId=kitano-resort 等をクエリパラメータで渡す
   ↓
-APIルートが Notion DB を企業名でフィルタリングして返す
+APIルートが getCompanyDbConfig(companyId) で企業別DB IDを取得
+  ↓
+企業専用の Notion DB に直接クエリ（フィルタなし）
 ```
 
 ### 新しい企業を追加するときの手順
 
-**⚠️ 必ず3ファイルすべてを更新すること**
+**⚠️ 必ず全ステップを実施すること**
 
 1. `src/config/companies.ts` に企業を1件追加
 2. `src/config/company-db-config.ts` に Notion DB ID マッピングを追加
 3. `src/config/features.ts` の `company` グループにサイドバー表示を追加
 4. Notion の「🏢 企業・組織 展開ページ」直下に企業ページを作成
-5. `npx tsc --noEmit` でエラーがないことを確認してから push
+5. 企業ページ配下に8種類のDBを作成（Notion MCP または手動）
+6. 作成した DB ID を `company-db-config.ts` に登録
+7. `npx tsc --noEmit` でエラーがないことを確認してから push
 
 ---
 
-## Notion DB 設計ルール（最重要）
+## 現在の Notion DB 登録状況（company-db-config.ts）
 
-### 2種類のDB方式
+### 企業別DB登録済み一覧
 
-| 方式 | 定義場所 | 用途 |
-|------|----------|------|
-| **共通DB**（全社で1つ） | `SHARED_NOTION_DBS`（company-db-config.ts） | 問い合わせ・フィードバック等、全企業が同じ構造で使う機能 |
-| **企業別DB**（企業ごとに1つ） | `COMPANY_DB_CONFIG`（company-db-config.ts） | 業種固有の機能（ホテルの客室管理など） |
+| 機能 | キー | 北野リゾート | さくら医療 | 麺屋フード | ハナマル |
+|------|------|:---:|:---:|:---:|:---:|
+| 顧客フィードバック | `customerFeedbackDbId` | ✅ | ✅ | ✅ | ✅ |
+| 問い合わせ管理 | `serviceContactDbId` | ✅ | ✅ | ✅ | ✅ |
+| 社員マスタ | `staffProfileDbId` | ✅ | ✅ | ✅ | ✅ |
+| 社員コンディション | `staffConditionDbId` | ✅ | ✅ | ✅ | ✅ |
+| KPI目標 | `kpiGoalsDbId` | ✅ | ✅ | ✅ | ✅ |
+| ナレッジベース | `knowledgeBaseDbId` | ✅ | ✅ | ✅ | ✅ |
+| プロジェクト管理 | `projectManagementDbId` | ✅ | ✅ | ✅ | ✅ |
+| プロジェクトタスク | `projectTaskDbId` | ✅ | ✅ | ✅ | ✅ |
 
-### 共通DBの設計原則
-
-- 全企業のデータを**1つのDBに集約**し、「企業名」SELECTプロパティで分離する
-- APIルートは必ず `企業名 = company.shortName` でフィルタリングしてから返す
-- DBは Notion の **「🔧 標準基盤」直下** に作成する（企業ページの配下ではない）
-- ❌ 問い合わせを1件1ページで作成してはいけない → 必ずDBレコードとして追加する
-
-### 現在の共通DB一覧（SHARED_NOTION_DBS）
-
-> ⚠️ **注意**: 問い合わせ管理DBは企業別DB方式に移行済み。
-> `SHARED_NOTION_DBS.contacts` は旧方式のため使用しないこと。
-
-| 定数キー | DB名 | Notion URL | ステータス |
-|----------|------|------------|------------|
-| `contacts` | 💬 問い合わせ管理DB（旧・共通DB） | [Notion](https://www.notion.so/a54a964325924e8a8282201799f64092) | ⚠️ 旧方式（削除予定） |
-| `customerFeedback` | 顧客フィードバックDB | 未作成 | 🔜 次期実装 |
-| `staffCondition` | 社員コンディションDB | 未作成 | 🔜 次期実装 |
-| `kpi` | KPI DB | 未作成 | 🔜 次期実装 |
-| `knowledgeBase` | ナレッジベースDB | 未作成 | 🔜 次期実装 |
-| `trainingLog` | 研修ログDB | 未作成 | 🔜 次期実装 |
-
-### 現在の企業別DB一覧（COMPANY_DB_CONFIG[].serviceContactDbId）
-
-| 企業ID | 企業名 | DB ID | サンプルデータ |
-|--------|--------|-------|----------------|
-| `kitano-resort` | 🏨 北野リゾートホテル | `f049100f0ef842be818fdb28cdc6bf68` | ✅ KR-001〜006（6件） |
-| `sakura-medical` | 🏥 さくら医療グループ | `d4507f62e1b4477a9b22fc8e48d50d48` | ✅ SM-001〜005（5件） |
-| `mensho-food` | 🍽️ 麺屋フードチェーン | `04c998d12c774d9a810d8ea18f9e1816` | ✅ MF-001〜005（5件） |
-| `hanamaru-store` | 🛒 ハナマルストア | `fd2bd7550a95416fa4f2d609333ebea2` | ✅ HM-001〜006（6件） |
-
-### 新機能のDB追加手順
-
-1. Notion の「🔧 標準基盤」直下に DBを作成（Notion MCP または手動）
-2. `src/config/company-db-config.ts` の `SHARED_NOTION_DBS` にキーとIDを追記
-3. 対応するAPIルートで `SHARED_NOTION_DBS.xxx` を参照してDBにレコードを追加
-4. この CLAUDE.md の「共通DB一覧」テーブルを更新する
-5. `npx tsc --noEmit` でエラーがないことを確認してから push
-
-### 問い合わせ管理DBのプロパティ構造
-
-```
-件名（TITLE）/ 企業名（SELECT）/ ステータス（SELECT）/ 優先度（SELECT）/
-カテゴリ（SELECT）/ チャネル（SELECT）/ 受付日時（DATE）/
-顧客名（TEXT）/ 担当者（TEXT）/ 問い合わせID（TEXT）/
-問い合わせ内容（TEXT）/ AI下書き（TEXT）/ 対応メモ（TEXT）
-```
+> **注**: 上記は Sprint #15 完了後の状態。Sprint #14 時点では staffProfile 以降は未登録。
 
 ---
 
@@ -174,7 +223,8 @@ APIルートが Notion DB を企業名でフィルタリングして返す
 - コードには必ず日本語コメントを入れる
 - 型チェックは `npx tsc --noEmit` で確認してから push
 - git push は Yoshitaka がターミナルから手動実行
-- Notionページ削除は必ず確認を取ること
+- Notionページ・DB削除は必ず確認を取ること
+- 新機能のDB追加は必ず企業別DB方式で実装する（共通DBは作らない）
 
 ---
 

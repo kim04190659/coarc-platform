@@ -79,7 +79,9 @@ export async function POST(request: Request) {
     }
 
     const company = getCompanyById(companyId)
-    const { SHARED_NOTION_DBS } = await import('@/config/company-db-config')
+    // ✅ 企業別DB方式: companyId から企業専用 DB ID を取得
+    const { getCompanyDbConfig } = await import('@/config/company-db-config')
+    const dbConfig = getCompanyDbConfig(companyId)
 
     type NotionPage = { id: string; properties: Record<string, unknown> }
     type PropMap = Record<string, {
@@ -92,28 +94,23 @@ export async function POST(request: Request) {
     const getText = (props: PropMap, key: string) =>
       props[key]?.title?.[0]?.plain_text ?? props[key]?.rich_text?.[0]?.plain_text ?? ''
 
-    // ── 社員マスタから対象社員を検索 ─────────────
-    const profileRes = await fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.staffProfile}/query`, {
+    // ── 社員マスタから対象社員を検索（企業別DB）────
+    // ✅ 企業専用DBにクエリ（企業名フィルタなし）
+    const profileRes = await fetch(`${NOTION_API}/databases/${dbConfig.staffProfileDbId}/query`, {
       method: 'POST',
       headers: notionHeaders(notionKey),
-      body: JSON.stringify({
-        filter: {
-          and: [
-            { property: '企業名', select: { equals: company.shortName } },
-            { property: '在籍状況', select: { equals: '在籍' } },
-          ],
-        },
-        page_size: 50,
-      }),
+      body: JSON.stringify({ page_size: 50 }),
     })
 
     if (!profileRes.ok) throw new Error('社員マスタ取得エラー')
     const profileData = await profileRes.json() as { results: NotionPage[] }
 
+    // 企業別DB方式: 氏名フィールドで検索（`氏名` が新スキーマ、`社員名` は旧）
     const staffPage = profileData.results.find(p => {
       const props = p.properties as PropMap
-      return getText(props, '社員名').includes(staffName.replace(/\s/g, '').slice(0, 2))
-        || getText(props, '社員名') === staffName
+      const name = getText(props, '氏名') || getText(props, '社員名')
+      return name.includes(staffName.replace(/\s/g, '').slice(0, 2))
+        || name === staffName
     })
 
     if (!staffPage) {
@@ -121,29 +118,26 @@ export async function POST(request: Request) {
     }
 
     const sp = staffPage.properties as PropMap
+    const skillsArr = (sp['スキル'] as { multi_select?: Array<{ name?: string }> } | undefined)?.multi_select ?? []
     const staffInfo = {
-      name:       getText(sp, '社員名'),
-      role:       sp['役職']?.select?.name     ?? '',
-      department: getText(sp, '部署'),
-      function_:  sp['得意機能']?.select?.name  ?? '',
-      skills:     getText(sp, 'スキルセット'),
+      name:       getText(sp, '氏名') || getText(sp, '社員名'),
+      role:       getText(sp, '役職') || (sp['役職']?.select?.name ?? ''),
+      department: sp['部署']?.select?.name ?? getText(sp, '部署'),
+      function_:  sp['得意機能']?.select?.name ?? '',
+      skills:     skillsArr.map(s => s.name ?? '').join(', ') || getText(sp, 'スキルセット'),
       certs:      getText(sp, '資格'),
-      joinYear:   sp['入社年']?.number           ?? 0,
+      joinYear:   sp['入社年']?.number ?? 0,
     }
 
-    // ── コンディション履歴（直近3件）を取得 ─────
-    const condRes = await fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.staffCondition}/query`, {
+    // ── コンディション履歴（直近3件）を取得（企業別DB）
+    // ✅ 企業専用DBにクエリ（企業名フィルタなし・社員名でフィルタ）
+    const condRes = await fetch(`${NOTION_API}/databases/${dbConfig.staffConditionDbId}/query`, {
       method: 'POST',
       headers: notionHeaders(notionKey),
       body: JSON.stringify({
         filter: {
-          and: [
-            { property: '企業名', select: { equals: company.shortName } },
-            {
-              property: '社員名',
-              rich_text: { contains: staffInfo.name.split(' ')[0] },  // 姓でフィルタ
-            },
-          ],
+          property: '社員名',
+          rich_text: { contains: staffInfo.name.split(' ')[0] },  // 姓でフィルタ
         },
         sorts: [{ property: '記録日', direction: 'descending' }],
         page_size: 3,
@@ -156,10 +150,12 @@ export async function POST(request: Request) {
       if (condData.results.length > 0) {
         conditionHistory = condData.results.map(c => {
           const props = c.properties as PropMap
+          // 企業別DB方式: 体調（新）またはコンディション（旧）を参照
+          const cond = props['体調']?.select?.name ?? props['コンディション']?.select?.name ?? '?'
           return [
-            `${props['記録日']?.date?.start ?? '日付不明'}: ${props['コンディション']?.select?.name ?? '?'}`,
-            `  負荷: ${props['業務負荷']?.select?.name ?? '?'} / ${props['勤務形態']?.select?.name ?? '?'}`,
-            `  AIコメント: ${getText(props, 'AIコメント') || 'なし'}`,
+            `${props['記録日']?.date?.start ?? '日付不明'}: ${cond}`,
+            `  負荷: ${props['業務負荷']?.select?.name ?? '?'} / ${props['勤務形態']?.select?.name ?? '不明'}`,
+            `  コメント: ${getText(props, 'コメント') || getText(props, 'AIコメント') || 'なし'}`,
           ].join('\n')
         }).join('\n')
       }

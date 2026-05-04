@@ -11,8 +11,7 @@
 // =====================================================
 
 import { NextResponse } from 'next/server'
-import { SHARED_NOTION_DBS } from '@/config/company-db-config'
-import { getCompanyById } from '@/config/companies'
+import { getCompanyDbConfig } from '@/config/company-db-config'
 
 const NOTION_API = 'https://api.notion.com/v1'
 const NOTION_VER = '2022-06-28'
@@ -60,25 +59,14 @@ function notionHeaders(apiKey: string) {
 
 async function fetchStaffProfiles(
   notionKey: string,
-  companyShortName: string,
+  staffProfileDbId: string,
 ): Promise<StaffProfile[]> {
-  const res = await fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.staffProfile}/query`, {
+  // ✅ 企業別DB方式: 企業専用DBにクエリ（企業名フィルタなし）
+  const res = await fetch(`${NOTION_API}/databases/${staffProfileDbId}/query`, {
     method: 'POST',
     headers: notionHeaders(notionKey),
     body: JSON.stringify({
-      filter: {
-        and: [
-          {
-            property: '企業名',
-            select: { equals: companyShortName },
-          },
-          {
-            property: '在籍状況',
-            select: { equals: '在籍' },
-          },
-        ],
-      },
-      sorts: [{ property: '社員名', direction: 'ascending' }],
+      sorts: [{ property: '氏名', direction: 'ascending' }],
       page_size: 50,
     }),
   })
@@ -101,16 +89,19 @@ async function fetchStaffProfiles(
     const getText = (p: typeof props[string] | undefined) =>
       p?.title?.[0]?.plain_text ?? p?.rich_text?.[0]?.plain_text ?? ''
 
+    // 企業別DB方式のプロパティ名にマッピング（multi_select は型アサーションで取得）
+    const skillProp = props['スキル'] as { multi_select?: Array<{ name?: string }> } | undefined
+    const skills = skillProp?.multi_select?.map(s => s.name ?? '').join(', ') ?? ''
     return {
       pageId:          page.id as string,
-      name:            getText(props['社員名']),
-      department:      getText(props['部署']),
-      role:            props['役職']?.select?.name            ?? '',
-      primaryFunction: props['得意機能']?.select?.name        ?? '',
-      skillSet:        getText(props['スキルセット']),
-      certifications:  getText(props['資格']),
-      status:          props['在籍状況']?.select?.name        ?? '',
-      joinYear:        props['入社年']?.number                 ?? 0,
+      name:            getText(props['氏名']),
+      department:      props['部署']?.select?.name ?? getText(props['部署']),
+      role:            getText(props['役職']),
+      primaryFunction: '',   // 企業別DBでは未定義（将来拡張予定）
+      skillSet:        skills || getText(props['スキルセット']),
+      certifications:  '',   // 企業別DBでは未定義（将来拡張予定）
+      status:          props['雇用形態']?.select?.name ?? '在籍',
+      joinYear:        props['入社年']?.number ?? 0,
     }
   })
 }
@@ -119,16 +110,13 @@ async function fetchStaffProfiles(
 
 async function fetchLatestConditions(
   notionKey: string,
-  companyShortName: string,
+  staffConditionDbId: string,
 ): Promise<Map<string, StaffCondition>> {
-  const res = await fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.staffCondition}/query`, {
+  // ✅ 企業別DB方式: 企業専用DBにクエリ（企業名フィルタなし）
+  const res = await fetch(`${NOTION_API}/databases/${staffConditionDbId}/query`, {
     method: 'POST',
     headers: notionHeaders(notionKey),
     body: JSON.stringify({
-      filter: {
-        property: '企業名',
-        select: { equals: companyShortName },
-      },
       sorts: [{ property: '記録日', direction: 'descending' }],
       page_size: 100,
     }),
@@ -155,14 +143,15 @@ async function fetchLatestConditions(
     const staffName = getText(props['社員名'])
     if (!staffName || conditionMap.has(staffName)) continue  // 最新1件のみ使用
 
+    // 企業別DB方式のプロパティ名にマッピング（体調→condition, コメント→memo）
     conditionMap.set(staffName, {
       pageId:     page.id as string,
       staffName,
-      condition:  props['コンディション']?.select?.name ?? '',
+      condition:  props['体調']?.select?.name ?? props['コンディション']?.select?.name ?? '',
       workload:   props['業務負荷']?.select?.name        ?? '',
       workStyle:  props['勤務形態']?.select?.name        ?? '',
       recordedAt: props['記録日']?.date?.start            ?? '',
-      memo:       getText(props['メモ']),
+      memo:       getText(props['コメント']) || getText(props['メモ']),
       aiComment:  getText(props['AIコメント']),
     })
   }
@@ -184,13 +173,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'companyId は必須です' }, { status: 400 })
   }
 
-  const company = getCompanyById(companyId)
+  // ✅ 企業別DB方式: companyId から企業専用 DB ID を取得
+  const dbConfig = getCompanyDbConfig(companyId)
 
   try {
-    // 社員マスタ + コンディションを並列取得
+    // 社員マスタ + コンディションを並列取得（企業別DB）
     const [profiles, conditionMap] = await Promise.all([
-      fetchStaffProfiles(notionKey, company.shortName),
-      fetchLatestConditions(notionKey, company.shortName),
+      fetchStaffProfiles(notionKey, dbConfig.staffProfileDbId),
+      fetchLatestConditions(notionKey, dbConfig.staffConditionDbId),
     ])
 
     // 社員マスタに最新コンディションを結合

@@ -69,10 +69,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '必須パラメータが不足しています' }, { status: 400 })
     }
 
-    // ── 企業ショートネームを取得 ──────────────────────
-    const { getCompanyById } = await import('@/config/companies')
-    const company = getCompanyById(companyId)
-    const { SHARED_NOTION_DBS } = await import('@/config/company-db-config')
+    // ✅ 企業別DB方式: companyId から企業専用 タスクDB IDを取得
+    const { getCompanyDbConfig } = await import('@/config/company-db-config')
+    const dbConfig = getCompanyDbConfig(companyId)
 
     // ── Claude Haiku にタスク計画を生成させる ─────────
     const client = new Anthropic({ apiKey: anthropicKey })
@@ -152,9 +151,7 @@ ${outputFormat}`
         'プロジェクト名': {
           rich_text: [{ text: { content: projectName } }],
         },
-        '企業名': {
-          select: { name: company.shortName },
-        },
+        // ✅ 企業名プロパティ不要（企業別DBは DB 自体で企業を識別）
         '担当者': {
           rich_text: [{ text: { content: task.assignee } }],
         },
@@ -185,12 +182,12 @@ ${outputFormat}`
         }
       }
 
-      // Notion に1件ずつ保存
+      // ✅ 企業専用タスクDBに1件ずつ保存
       const createRes = await fetch(`${NOTION_API}/pages`, {
         method:  'POST',
         headers: notionHeaders(notionKey),
         body:    JSON.stringify({
-          parent:     { database_id: SHARED_NOTION_DBS.projectTask },
+          parent:     { database_id: dbConfig.projectTaskDbId },
           properties,
         }),
       })

@@ -16,8 +16,7 @@
 // =====================================================
 
 import { NextResponse } from 'next/server'
-import { SHARED_NOTION_DBS } from '@/config/company-db-config'
-import { getCompanyById } from '@/config/companies'
+import { getCompanyDbConfig } from '@/config/company-db-config'
 
 const NOTION_API = 'https://api.notion.com/v1'
 const NOTION_VER = '2022-06-28'
@@ -57,18 +56,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'companyId は必須です' }, { status: 400 })
   }
 
-  const company = getCompanyById(companyId)
+  // ✅ 企業別DB方式: companyId から企業専用 KPI目標DB IDを取得
+  const dbConfig = getCompanyDbConfig(companyId)
 
   try {
-    // KPI目標DB（共通DB）から企業別に取得
-    const res = await fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.kpiGoals}/query`, {
+    // KPI目標DB（企業別）から全件取得（企業名フィルタなし）
+    const res = await fetch(`${NOTION_API}/databases/${dbConfig.kpiGoalsDbId}/query`, {
       method: 'POST',
       headers: notionHeaders(notionKey),
       body: JSON.stringify({
-        filter: {
-          property: '企業名',
-          select: { equals: company.shortName },
-        },
         sorts: [{ property: 'KPI名', direction: 'ascending' }],
         page_size: 20,
       }),
@@ -92,13 +88,14 @@ export async function GET(request: Request) {
         number?: number
       }>
 
+      // 企業別DB方式のプロパティ名にマッピング
       return {
         pageId:  page.id as string,
-        kpiName: props['KPI名']?.title?.[0]?.plain_text   ?? '',
-        kpiType: props['KPI種別']?.select?.name            ?? '',
-        target:  props['目標値']?.number                   ?? 0,
-        unit:    props['単位']?.select?.name               ?? '',
-        period:  props['期間']?.select?.name               ?? '',
+        kpiName: props['KPI名']?.title?.[0]?.plain_text  ?? '',
+        kpiType: props['カテゴリ']?.select?.name ?? props['KPI種別']?.select?.name ?? '',
+        target:  props['目標値']?.number                  ?? 0,
+        unit:    props['単位']?.select?.name              ?? '',
+        period:  props['期間']?.select?.name              ?? '',
       }
     })
 

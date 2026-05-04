@@ -10,7 +10,7 @@
 // =====================================================
 
 import { NextResponse } from 'next/server'
-import { getCompanyById } from '@/config/companies'
+import { getCompanyDbConfig } from '@/config/company-db-config'
 
 const NOTION_API = 'https://api.notion.com/v1'
 const NOTION_VER = '2022-06-28'
@@ -80,21 +80,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'companyId は必須です' }, { status: 400 })
   }
 
-  const company = getCompanyById(companyId)
-  const { SHARED_NOTION_DBS } = await import('@/config/company-db-config')
+  // ✅ 企業別DB方式: companyId から企業専用 DB ID を取得
+  const dbConfig = getCompanyDbConfig(companyId)
 
   try {
     // ── タスク一覧モード ─────────────────────────────
     if (projectName) {
-      const taskRes = await fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.projectTask}/query`, {
+      // ✅ 企業専用DBにクエリ（企業名フィルタなし・プロジェクト名のみでフィルタ）
+      const taskRes = await fetch(`${NOTION_API}/databases/${dbConfig.projectTaskDbId}/query`, {
         method:  'POST',
         headers: notionHeaders(notionKey),
         body:    JSON.stringify({
           filter: {
-            and: [
-              { property: '企業名',       select:    { equals: company.shortName } },
-              { property: 'プロジェクト名', rich_text: { contains: projectName }  },
-            ],
+            property: 'プロジェクト名',
+            rich_text: { contains: projectName },
           },
           sorts: [{ property: '期限', direction: 'ascending' }],
           page_size: 50,
@@ -123,24 +122,20 @@ export async function GET(request: Request) {
     }
 
     // ── プロジェクト一覧モード ───────────────────────
-    // プロジェクト一覧とタスク集計を並行取得
+    // ✅ 企業専用DBにクエリ（企業名フィルタなし）
     const [projectRes, taskRes] = await Promise.all([
-      fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.projectManagement}/query`, {
+      fetch(`${NOTION_API}/databases/${dbConfig.projectManagementDbId}/query`, {
         method:  'POST',
         headers: notionHeaders(notionKey),
         body:    JSON.stringify({
-          filter: { property: '企業名', select: { equals: company.shortName } },
-          sorts:  [{ property: '完了予定日', direction: 'ascending' }],
+          sorts: [{ property: '完了予定日', direction: 'ascending' }],
           page_size: 50,
         }),
       }),
-      fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.projectTask}/query`, {
+      fetch(`${NOTION_API}/databases/${dbConfig.projectTaskDbId}/query`, {
         method:  'POST',
         headers: notionHeaders(notionKey),
-        body:    JSON.stringify({
-          filter: { property: '企業名', select: { equals: company.shortName } },
-          page_size: 100,
-        }),
+        body:    JSON.stringify({ page_size: 100 }),
       }),
     ])
 

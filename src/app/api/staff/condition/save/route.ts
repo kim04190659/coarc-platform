@@ -15,7 +15,7 @@
 // =====================================================
 
 import { NextResponse } from 'next/server'
-import { SHARED_NOTION_DBS } from '@/config/company-db-config'
+import { getCompanyDbConfig } from '@/config/company-db-config'
 import { getCompanyById } from '@/config/companies'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -69,6 +69,8 @@ export async function POST(request: Request) {
     }
 
     const company = getCompanyById(companyId)
+    // ✅ 企業別DB方式: companyId から企業専用コンディションDB IDを取得
+    const dbConfig = getCompanyDbConfig(companyId)
     const today = new Date().toISOString().split('T')[0]
 
     // ── Claude Haiku でAIコメントを生成 ──────────────
@@ -114,41 +116,38 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── Notion コンディションDBに保存 ─────────────────
+    // ── Notion 企業別コンディションDBに保存 ───────────
+    // ✅ 企業専用DBに保存（企業名プロパティ不要）
     const title = `${today.substring(0, 7).replace('-', '年')}月 ${staffName} コンディション記録`
 
     const res = await fetch(`${NOTION_API}/pages`, {
       method: 'POST',
       headers: notionHeaders(notionKey),
       body: JSON.stringify({
-        parent: { database_id: SHARED_NOTION_DBS.staffCondition },
+        parent: { database_id: dbConfig.staffConditionDbId },
         properties: {
-          '件名': {
+          '記録タイトル': {
             title: [{ text: { content: title } }],
-          },
-          '企業名': {
-            select: { name: company.shortName },
           },
           '社員名': {
             rich_text: [{ text: { content: staffName } }],
           },
-          'コンディション': {
-            select: { name: condition },
+          '体調': {
+            // 企業別DB方式: 良好/普通/不調 の3段階（旧⭐5段階から変更）
+            select: { name: conditionToScore(condition) >= 4 ? '良好' : conditionToScore(condition) >= 3 ? '普通' : '不調' },
           },
           '業務負荷': {
-            select: { name: workload },
+            // 企業別DB方式: 適切/やや高い/過多 の3段階
+            select: { name: workload === '低' ? '適切' : workload === '中' ? '適切' : workload === '高' ? 'やや高い' : '適切' },
           },
-          '勤務形態': {
-            select: { name: workStyle },
+          'モチベーション': {
+            select: { name: conditionToScore(condition) >= 4 ? '高' : conditionToScore(condition) >= 3 ? '中' : '低' },
           },
           '記録日': {
             date: { start: today },
           },
-          'メモ': {
-            rich_text: [{ text: { content: memo || '' } }],
-          },
-          'AIコメント': {
-            rich_text: [{ text: { content: aiComment } }],
+          'コメント': {
+            rich_text: [{ text: { content: (memo ? memo + (aiComment ? '\n\n[AIアドバイス] ' + aiComment : '') : aiComment) || '' } }],
           },
         },
       }),

@@ -16,7 +16,8 @@
 // =====================================================
 
 import { NextResponse } from 'next/server'
-import { getCompanyById } from '@/config/companies'
+import { getCompanyDbConfig } from '@/config/company-db-config'
+// ✅ getCompanyById は企業別DB方式では不要（DBIDで企業を識別）
 
 const NOTION_API = 'https://api.notion.com/v1'
 const NOTION_VER = '2022-06-28'
@@ -47,22 +48,21 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: 'companyId・projectName は必須です' }, { status: 400 })
   }
 
-  const company = getCompanyById(companyId)
-  const { SHARED_NOTION_DBS } = await import('@/config/company-db-config')
+  // ✅ 企業別DB方式: companyId から企業専用 タスクDB IDを取得
+  const dbConfig = getCompanyDbConfig(companyId)
 
   // [id] は将来的にプロジェクトIDで直接引くために使用（現在はprojectName検索）
   void (await context.params).id
 
   try {
-    const res = await fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.projectTask}/query`, {
+    // ✅ 企業専用DBにクエリ（企業名フィルタなし・プロジェクト名のみでフィルタ）
+    const res = await fetch(`${NOTION_API}/databases/${dbConfig.projectTaskDbId}/query`, {
       method:  'POST',
       headers: notionHeaders(notionKey),
       body:    JSON.stringify({
         filter: {
-          and: [
-            { property: '企業名',        select:    { equals: company.shortName } },
-            { property: 'プロジェクト名', rich_text: { contains: projectName }   },
-          ],
+          property: 'プロジェクト名',
+          rich_text: { contains: projectName },
         },
         sorts: [
           { property: '優先度', direction: 'descending' },
@@ -139,16 +139,14 @@ export async function POST(request: Request, context: RouteContext) {
       )
     }
 
-    const company = getCompanyById(companyId)
-    const { SHARED_NOTION_DBS } = await import('@/config/company-db-config')
+    // ✅ 企業別DB方式: companyId から企業専用 タスクDB IDを取得
+    const dbConfig = getCompanyDbConfig(companyId)
 
     const properties: Record<string, unknown> = {
       'タスク名': {
         title: [{ text: { content: taskName } }],
       },
-      '企業名': {
-        select: { name: company.shortName },
-      },
+      // ✅ 企業名プロパティ不要（企業別DBは DB 自体で企業を識別）
       'プロジェクト名': {
         rich_text: [{ text: { content: projectName } }],
       },
@@ -177,7 +175,8 @@ export async function POST(request: Request, context: RouteContext) {
       method:  'POST',
       headers: notionHeaders(notionKey),
       body:    JSON.stringify({
-        parent:     { database_id: SHARED_NOTION_DBS.projectTask },
+        // ✅ 企業専用タスクDBにページを作成
+        parent:     { database_id: dbConfig.projectTaskDbId },
         properties,
       }),
     })

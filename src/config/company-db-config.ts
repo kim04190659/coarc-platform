@@ -1,206 +1,221 @@
 // =====================================================
 //  src/config/company-db-config.ts
-//  Notion DB ID マッピング（共通DB・企業別DB）
+//  企業別 Notion DB ID マッピング
 //
-//  ■ 2種類のDB設計
+//  ■ 設計原則（最重要）
+//    全DBは企業別。共通DB（SHARED_NOTION_DBS）方式は廃止。
+//    企業ごとに独立した Notion DB を持つことで、
+//    データ分離・アクセス権限管理・将来の解約処理を実現する。
 //
-//  【共通DB（SHARED_NOTION_DBS）】
-//    全企業が同一のNotionDBを使用する。
-//    「企業名」プロパティで各社のデータを分離するマルチテナント方式。
-//    RunWithの「NOTION_HEARING_DB_ID」と同じ設計。
-//    → 新機能を追加したら、まずここにDBを作成してIDを登録する。
+//  ■ SHARED_NOTION_DBS について
+//    過去に共通DB方式で作成した DB ID の残骸。
+//    現在は全機能を企業別DBに移行済み（Sprint #17 完了）。
+//    SHARED_NOTION_DBS は参照禁止。将来削除予定。
 //
-//  【企業別DB（COMPANY_DB_CONFIG）】
-//    企業ごとに専用DBを持つ場合のマッピング。
-//    企業固有の業種特化機能（ホテルの客室管理、医療の予約管理など）で使用。
-//    現時点ではすべて空（未設定）。
-//
-//  ■ DB追加手順（共通DB）
-//    1. Notionの「🔧 標準基盤 > 💾 標準DB」配下にDBを作成
-//    2. SHARED_NOTION_DBS にDBのIDを追記
-//    3. 対応するAPIルートで SHARED_NOTION_DBS[xxx] を参照
-//    4. CLAUDE.md の「Notion共通DB一覧」テーブルも更新する
+//  ■ 新機能のDB追加手順
+//    1. CompanyDbConfig 型に新しいフィールドを追加
+//    2. Notion の各企業ページ配下に DB を作成
+//    3. COMPANY_DB_CONFIG の各企業エントリにDB IDを追記
+//    4. CLAUDE.md の「DB登録状況」テーブルを更新
+//    5. npx tsc --noEmit で確認 → push
 // =====================================================
 
 // ──────────────────────────────────────────────────
-//  全企業共通 Notion DB ID
-//  （企業名プロパティでフィルタリングして使用する）
+//  ⚠️ 旧方式（廃止）— 参照禁止
+//  以下の定数は Sprint #15 以前の共通DB方式の名残。
+//  APIルートから参照してはいけない。将来削除予定。
 // ──────────────────────────────────────────────────
+/** @deprecated 企業別DB方式に移行済み。参照禁止。 */
 export const SHARED_NOTION_DBS = {
-  /**
-   * 💬 問い合わせ管理DB（ServiceContact）
-   * Notion: 🔧 標準基盤 > 💬 問い合わせ管理DB | ServiceContact
-   * URL: https://www.notion.so/a54a964325924e8a8282201799f64092
-   *
-   * プロパティ: 件名/企業名/ステータス/優先度/カテゴリ/チャネル/
-   *             受付日時/顧客名/担当者/問い合わせID/問い合わせ内容/AI下書き/対応メモ
-   */
-  contacts: 'a54a964325924e8a8282201799f64092',
-
-  /**
-   * 🔍 ナレッジベースDB（KnowledgeBase）— Sprint 8 追加
-   * Notion: 🔧 標準基盤 > 🔍 ナレッジベースDB | KnowledgeBase
-   * URL: https://www.notion.so/bc52a28d7bbc48d986283146dd7adc97
-   *
-   * プロパティ: 件名/企業名/カテゴリ/対応内容/キーワード/有効/登録日
-   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
-   */
-  knowledgeBase: 'bc52a28d7bbc48d986283146dd7adc97',
-
-  /**
-   * 📈 KPI目標DB（KpiGoals）— Sprint 8 追加
-   * Notion: 🔧 標準基盤 > 📈 KPI目標DB | KpiGoals
-   * URL: https://www.notion.so/99fc69ac37064ecebec8e14579bda417
-   *
-   * プロパティ: KPI名/企業名/KPI種別/目標値/単位/期間/更新日
-   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
-   */
-  kpiGoals: '99fc69ac37064ecebec8e14579bda417',
-
-  /**
-   * 👤 社員マスタDB（StaffProfile）— Sprint 9 追加
-   * Notion: 🔧 標準基盤 > 👤 社員マスタDB | StaffProfile
-   *
-   * プロパティ: 社員名/企業名/部署/役職/得意機能/スキルセット/資格/在籍状況/入社年
-   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
-   */
-  staffProfile: '7a9d0e9e2d1b4d6ab8caef909abb8b1b',
-
-  /**
-   * 💚 社員コンディションDB（StaffCondition）— Sprint 9 追加
-   * Notion: 🔧 標準基盤 > 💚 社員コンディションDB | StaffCondition
-   *
-   * プロパティ: 件名/企業名/社員名/コンディション/業務負荷/勤務形態/記録日/メモ/AIコメント
-   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
-   */
-  staffCondition: '9016c6d2857b4afcb55122d53671445d',
-
-  /**
-   * 📁 プロジェクト管理DB（ProjectManagement）— Sprint 11 追加
-   * Notion: 🔧 標準基盤 > 📁 プロジェクト管理DB | ProjectManagement
-   * URL: https://www.notion.so/74ec2a90d96b4f48966b17ad9b426532
-   *
-   * プロパティ: プロジェクト名/企業名/ステータス/優先度/担当者/依頼内容/開始日/完了予定日/進捗メモ
-   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
-   */
+  /** @deprecated → 各社 serviceContactDbId を使用 */
+  contacts:          'a54a964325924e8a8282201799f64092',
+  /** @deprecated → 各社 knowledgeBaseDbId を使用 */
+  knowledgeBase:     'bc52a28d7bbc48d986283146dd7adc97',
+  /** @deprecated → 各社 kpiGoalsDbId を使用 */
+  kpiGoals:          '99fc69ac37064ecebec8e14579bda417',
+  /** @deprecated → 各社 staffProfileDbId を使用 */
+  staffProfile:      '7a9d0e9e2d1b4d6ab8caef909abb8b1b',
+  /** @deprecated → 各社 staffConditionDbId を使用 */
+  staffCondition:    '9016c6d2857b4afcb55122d53671445d',
+  /** @deprecated → 各社 projectManagementDbId を使用 */
   projectManagement: '74ec2a90d96b4f48966b17ad9b426532',
-
-  /**
-   * ✅ プロジェクトタスクDB（ProjectTask）— Sprint 11 追加
-   * Notion: 🔧 標準基盤 > ✅ プロジェクトタスクDB | ProjectTask
-   * URL: https://www.notion.so/24e522198f9c47c5860707f800d27e60
-   *
-   * プロパティ: タスク名/企業名/プロジェクト名/担当者/ステータス/優先度/期限/成果物/メモ
-   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
-   */
-  projectTask: '24e522198f9c47c5860707f800d27e60',
-
-  // 今後追加予定
-  // trainingLog: '',  // 研修ログDB
+  /** @deprecated → 各社 projectTaskDbId を使用 */
+  projectTask:       '24e522198f9c47c5860707f800d27e60',
 } as const
 
+// ──────────────────────────────────────────────────
+//  企業別 DB 設定の型定義
+//  全フィールド必須。未設定の場合は '' を入れること。
+// ──────────────────────────────────────────────────
 export type CompanyDbConfig = {
-  /** 顧客フィードバック DB */
+  // ── 顧客管理 ──────────────────────────────────────
+  /** 💬 顧客フィードバックDB */
   customerFeedbackDbId: string
-  /** 顧客接点（問い合わせ）DB */
+  /** 💬 問い合わせ管理DB */
   serviceContactDbId: string
-  /** 顧客プロファイル DB */
+  /** 👤 顧客プロファイルDB（未実装） */
   customerProfileDbId: string
-  /** 社員コンディション DB */
+
+  // ── 社員管理 ──────────────────────────────────────
+  /** 👤 社員マスタDB（プロフィール・スキル） */
+  staffProfileDbId: string
+  /** 💚 社員コンディションDB（Well-Being記録） */
   staffConditionDbId: string
-  /** 研修ログ DB */
+  /** 📚 研修ログDB（未実装） */
   trainingLogDbId: string
-  /** KPI DB */
-  kpiDbId: string
-  /** 製品・サービス品質 DB */
+
+  // ── 経営・KPI ─────────────────────────────────────
+  /** 📈 KPI目標DB */
+  kpiGoalsDbId: string
+  /** 🏆 製品・サービス品質DB（未実装） */
   productQualityDbId: string
-  /** ナレッジベース DB */
+
+  // ── ナレッジ ──────────────────────────────────────
+  /** 🔍 ナレッジベースDB */
   knowledgeBaseDbId: string
-  /** 企業プロファイル DB（AI顧問カスタマイズ用） */
+
+  // ── プロジェクト管理 ──────────────────────────────
+  /** 📁 プロジェクト管理DB */
+  projectManagementDbId: string
+  /** ✅ プロジェクトタスクDB */
+  projectTaskDbId: string
+
+  // ── 企業プロファイル ──────────────────────────────
+  /** 🏢 企業プロファイルDB（AI顧問カスタマイズ用・未実装） */
   companyProfileDbId: string
 }
 
-/**
- * 企業ID → Notion DB ID マッピング
- * 実際の Notion DB ID は企業展開後にここへ登録する。
- */
+// ──────────────────────────────────────────────────
+//  企業ID → 企業別 Notion DB ID マッピング
+//  Sprint #15 で Notion の各企業ページ配下に DB を作成し、
+//  ここに ID を登録した。
+// ──────────────────────────────────────────────────
 export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
+
+  // ══════════════════════════════════════════════════
+  //  🏨 北野リゾートホテル
+  //  Notion: 🏢 企業展開 > 🏨 北野リゾートホテル Coarc
+  //  企業ページID: 355960a91e23810fb38fe9221ae8ea71
+  // ══════════════════════════════════════════════════
   'kitano-resort': {
-    // 💬 顧客フィードバックDB — 北野リゾートホテル専用
-    // Notion: 🏨 北野リゾートホテル Coarc > 💬 顧客フィードバックDB
+    // ── 顧客管理 ──────────────────────────────────────
     customerFeedbackDbId: 'f267462f4b104a0690e2d310353b30d8',
-    // 💬 問い合わせ管理DB — 北野リゾートホテル専用
-    // Notion: 🏨 北野リゾートホテル Coarc > 💬 問い合わせ管理DB
     serviceContactDbId:   'f049100f0ef842be818fdb28cdc6bf68',
     customerProfileDbId:  '',
-    staffConditionDbId:   '',
-    trainingLogDbId:      '',
-    kpiDbId:              '',
-    productQualityDbId:   '',
-    knowledgeBaseDbId:    '',
-    companyProfileDbId:   '',
+
+    // ── 社員管理 ──────────────────────────────────────
+    staffProfileDbId:   'fac9284b779942888e892ca49d6b1e42',  // Sprint #15 登録済み
+    staffConditionDbId: '999ee8aad7f542fd8cc67cf479430af6',  // Sprint #15 登録済み
+    trainingLogDbId:    '',
+
+    // ── 経営・KPI ─────────────────────────────────────
+    kpiGoalsDbId:       '5651cb54fb6e44a6b3f3fd868a230819',  // Sprint #15 登録済み
+    productQualityDbId: '',
+
+    // ── ナレッジ ──────────────────────────────────────
+    knowledgeBaseDbId:  'dd02d05800fb4f2782935cfbdeb4df5e',  // Sprint #15 登録済み
+
+    // ── プロジェクト管理 ──────────────────────────────
+    projectManagementDbId: 'b5f5a9b8ef7e47c79495e461cac01505',  // Sprint #15 登録済み
+    projectTaskDbId:       '34582fe39bce4c8687f88360b328877f',  // Sprint #15 登録済み
+
+    // ── 企業プロファイル ──────────────────────────────
+    companyProfileDbId: '',
   },
+
+  // ══════════════════════════════════════════════════
+  //  🏥 さくら医療グループ
+  //  Notion: 🏢 企業展開 > 🏥 さくら医療グループ Coarc
+  //  企業ページID: 355960a91e238115a0b4feeae1a9bc32
+  // ══════════════════════════════════════════════════
   'sakura-medical': {
-    // 💬 顧客フィードバックDB — さくら医療グループ専用
-    // Notion: 🏥 さくら医療グループ Coarc > 💬 顧客フィードバックDB
     customerFeedbackDbId: '7a4444ffa8c34e3f866aedecfcb2c95a',
-    // 💬 問い合わせ管理DB — さくら医療グループ専用
-    // Notion: 🏥 さくら医療グループ Coarc > 💬 問い合わせ管理DB
     serviceContactDbId:   'd4507f62e1b4477a9b22fc8e48d50d48',
     customerProfileDbId:  '',
-    staffConditionDbId:   '',
-    trainingLogDbId:      '',
-    kpiDbId:              '',
-    productQualityDbId:   '',
-    knowledgeBaseDbId:    '',
-    companyProfileDbId:   '',
+
+    staffProfileDbId:   '06729c0a6ac141b2a3ef91b298750047',  // Sprint #15 登録済み
+    staffConditionDbId: '9856119a99014c4a9f7b6cff35ebee0a',  // Sprint #15 登録済み
+    trainingLogDbId:    '',
+
+    kpiGoalsDbId:       '0da44ddd32184b5b88dee18b65bf0965',  // Sprint #15 登録済み
+    productQualityDbId: '',
+
+    knowledgeBaseDbId:  '213d110d1ed24b5786fdab9be5c4173e',  // Sprint #15 登録済み
+
+    projectManagementDbId: 'ed6c6272f2d14f6db747e704f25f12a8',  // Sprint #15 登録済み
+    projectTaskDbId:       'c617ae3e8d6048f68a4564c2f2923a6f',  // Sprint #15 登録済み
+
+    companyProfileDbId: '',
   },
+
+  // ══════════════════════════════════════════════════
+  //  🍽️ 麺屋フードチェーン
+  //  Notion: 🏢 企業展開 > 🍽️ 麺屋フードチェーン Coarc
+  //  企業ページID: 355960a91e2381bd8b91f3edff9c9dc5
+  // ══════════════════════════════════════════════════
   'mensho-food': {
-    // 💬 顧客フィードバックDB — 麺屋フードチェーン専用
-    // Notion: 🍽️ 麺屋フードチェーン Coarc > 💬 顧客フィードバックDB
     customerFeedbackDbId: '30b8a58e10d34cfbb33cd3cabb3f953b',
-    // 💬 問い合わせ管理DB — 麺屋フードチェーン専用
-    // Notion: 🍽️ 麺屋フードチェーン Coarc > 💬 問い合わせ管理DB
     serviceContactDbId:   '04c998d12c774d9a810d8ea18f9e1816',
     customerProfileDbId:  '',
-    staffConditionDbId:   '',
-    trainingLogDbId:      '',
-    kpiDbId:              '',
-    productQualityDbId:   '',
-    knowledgeBaseDbId:    '',
-    companyProfileDbId:   '',
+
+    staffProfileDbId:   '1b04bdf965be4996b346f6b296d588dc',  // Sprint #15 登録済み
+    staffConditionDbId: '33b4dd61bf344d5e8e892d9eb7174348',  // Sprint #15 登録済み
+    trainingLogDbId:    '',
+
+    kpiGoalsDbId:       '9555f4dd8eaf4e429b583af44277311b',  // Sprint #15 登録済み
+    productQualityDbId: '',
+
+    knowledgeBaseDbId:  '381713c9eb874b418fb7e890e67a25d0',  // Sprint #15 登録済み
+
+    projectManagementDbId: 'fa78ee68e1c24bda94ebbcc75bf54400',  // Sprint #15 登録済み
+    projectTaskDbId:       '25895e4aec4042dd8215cc51613a4bd2',  // Sprint #15 登録済み
+
+    companyProfileDbId: '',
   },
+
+  // ══════════════════════════════════════════════════
+  //  🛒 ハナマルストア
+  //  Notion: 🏢 企業展開 > 🛒 ハナマルストア Coarc
+  //  企業ページID: 355960a91e2381f997f5ccd8ddd1c7db
+  // ══════════════════════════════════════════════════
   'hanamaru-store': {
-    // 💬 顧客フィードバックDB — ハナマルストア専用
-    // Notion: 🛒 ハナマルストア Coarc > 💬 顧客フィードバックDB
     customerFeedbackDbId: 'eb5db63ce8784d71b33888a244fd86b7',
-    // 💬 問い合わせ管理DB — ハナマルストア専用
-    // Notion: 🛒 ハナマルストア Coarc > 💬 問い合わせ管理DB
     serviceContactDbId:   'fd2bd7550a95416fa4f2d609333ebea2',
     customerProfileDbId:  '',
-    staffConditionDbId:   '',
-    trainingLogDbId:      '',
-    kpiDbId:              '',
-    productQualityDbId:   '',
-    knowledgeBaseDbId:    '',
-    companyProfileDbId:   '',
+
+    staffProfileDbId:   '096c8ce43a7f45089dd8613f9a5d9ab5',  // Sprint #15 登録済み
+    staffConditionDbId: '11b071a51eff4976ac65f4658cbb4249',  // Sprint #15 登録済み
+    trainingLogDbId:    '',
+
+    kpiGoalsDbId:       'c6853094299840c59d493bd5084dbab8',  // Sprint #15 登録済み
+    productQualityDbId: '',
+
+    knowledgeBaseDbId:  'e48d008010bd403b88a8fdfc7a10afab',  // Sprint #15 登録済み
+
+    projectManagementDbId: 'da7ffd9b835149fd93342842e075c8c4',  // Sprint #15 登録済み
+    projectTaskDbId:       '5825c3d5f370441f802cee2b1f21221c',  // Sprint #15 登録済み
+
+    companyProfileDbId: '',
   },
 }
 
 /**
  * 企業ID に対応する DB 設定を取得する。
- * 未設定の場合はすべて空文字の設定を返す。
+ * 未登録の場合はすべて空文字の設定を返す。
  */
 export function getCompanyDbConfig(companyId: string): CompanyDbConfig {
   return COMPANY_DB_CONFIG[companyId] ?? {
-    customerFeedbackDbId: '',
-    serviceContactDbId:   '',
-    customerProfileDbId:  '',
-    staffConditionDbId:   '',
-    trainingLogDbId:      '',
-    kpiDbId:              '',
-    productQualityDbId:   '',
-    knowledgeBaseDbId:    '',
-    companyProfileDbId:   '',
+    customerFeedbackDbId:  '',
+    serviceContactDbId:    '',
+    customerProfileDbId:   '',
+    staffProfileDbId:      '',
+    staffConditionDbId:    '',
+    trainingLogDbId:       '',
+    kpiGoalsDbId:          '',
+    productQualityDbId:    '',
+    knowledgeBaseDbId:     '',
+    projectManagementDbId: '',
+    projectTaskDbId:       '',
+    companyProfileDbId:    '',
   }
 }

@@ -18,7 +18,7 @@
 // =====================================================
 
 import { NextResponse } from 'next/server'
-import { SHARED_NOTION_DBS } from '@/config/company-db-config'
+import { getCompanyDbConfig } from '@/config/company-db-config'
 import { getCompanyById } from '@/config/companies'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -62,25 +62,19 @@ export async function GET(request: Request) {
   }
 
   const company = getCompanyById(companyId)
+  // ✅ 企業別DB方式: companyId から企業専用ナレッジDB IDを取得
+  const dbConfig = getCompanyDbConfig(companyId)
 
   try {
-    // ── ナレッジベースDBから企業別に全件取得 ─────────────
-    // 「企業名」SELECTプロパティでフィルタリング（共通DB方式）
-    const res = await fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.knowledgeBase}/query`, {
+    // ── ナレッジベースDB（企業別）から全件取得 ────────────
+    // ✅ 企業専用DBにクエリ（企業名フィルタなし）
+    const res = await fetch(`${NOTION_API}/databases/${dbConfig.knowledgeBaseDbId}/query`, {
       method: 'POST',
       headers: notionHeaders(notionKey),
       body: JSON.stringify({
         filter: {
-          and: [
-            {
-              property: '企業名',
-              select: { equals: company.shortName },
-            },
-            {
-              property: '有効',
-              select: { equals: '有効' },
-            },
-          ],
+          property: '有効フラグ',
+          select: { equals: '有効' },
         },
         sorts: [{ timestamp: 'created_time', direction: 'descending' }],
         page_size: 50,
@@ -108,12 +102,14 @@ export async function GET(request: Request) {
       const getText = (prop: typeof props[string] | undefined) =>
         prop?.title?.[0]?.plain_text ?? prop?.rich_text?.[0]?.plain_text ?? ''
 
+      // 企業別DB方式: タイトル→タイトル, 対応内容→内容, キーワード→タグ
+      const tags = (props['タグ'] as { multi_select?: Array<{ name?: string }> } | undefined)?.multi_select ?? []
       return {
         pageId:   page.id as string,
-        title:    getText(props['件名']),
+        title:    getText(props['タイトル']) || getText(props['件名']),
         category: props['カテゴリ']?.select?.name ?? '',
-        content:  getText(props['対応内容']),
-        keywords: getText(props['キーワード']),
+        content:  getText(props['内容']) || getText(props['対応内容']),
+        keywords: tags.map(t => t.name ?? '').join(' ') || getText(props['キーワード']),
       }
     })
 

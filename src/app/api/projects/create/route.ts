@@ -16,7 +16,7 @@
 // =====================================================
 
 import { NextResponse } from 'next/server'
-import { getCompanyById } from '@/config/companies'
+import { getCompanyDbConfig } from '@/config/company-db-config'
 
 const NOTION_API = 'https://api.notion.com/v1'
 const NOTION_VER = '2022-06-28'
@@ -55,16 +55,14 @@ export async function POST(request: Request) {
       )
     }
 
-    const company = getCompanyById(companyId)
-    const { SHARED_NOTION_DBS } = await import('@/config/company-db-config')
+    // ✅ 企業別DB方式: companyId から企業専用 DB ID を取得
+    const dbConfig = getCompanyDbConfig(companyId)
 
-    // ── Notion にプロジェクトページを作成 ──────────
+    // ── 企業別 Notion プロジェクト管理DBにページを作成 ──
+    // ✅ 企業名プロパティ不要（企業別DBは DB 自体で企業を識別）
     const properties: Record<string, unknown> = {
       'プロジェクト名': {
         title: [{ text: { content: projectName } }],
-      },
-      '企業名': {
-        select: { name: company.shortName },
       },
       'ステータス': {
         select: { name: '計画中' },
@@ -92,7 +90,7 @@ export async function POST(request: Request) {
       method:  'POST',
       headers: notionHeaders(notionKey),
       body:    JSON.stringify({
-        parent:     { database_id: SHARED_NOTION_DBS.projectManagement },
+        parent:     { database_id: dbConfig.projectManagementDbId },
         properties,
       }),
     })

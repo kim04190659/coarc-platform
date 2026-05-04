@@ -96,28 +96,21 @@ export async function POST(request: Request) {
 
     const company = getCompanyById(companyId)
 
-    // ── 社員マスタ取得 ───────────────────────────
-    const { SHARED_NOTION_DBS } = await import('@/config/company-db-config')
+    // ── 社員マスタ取得（企業別DB方式）──────────────
+    const { getCompanyDbConfig } = await import('@/config/company-db-config')
+    const dbConfig = getCompanyDbConfig(companyId)
 
+    // ✅ 企業専用DBにクエリ（企業名フィルタなし）
     const [profileRes, conditionRes] = await Promise.all([
-      fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.staffProfile}/query`, {
+      fetch(`${NOTION_API}/databases/${dbConfig.staffProfileDbId}/query`, {
         method: 'POST',
         headers: notionHeaders(notionKey),
-        body: JSON.stringify({
-          filter: {
-            and: [
-              { property: '企業名', select: { equals: company.shortName } },
-              { property: '在籍状況', select: { equals: '在籍' } },
-            ],
-          },
-          page_size: 50,
-        }),
+        body: JSON.stringify({ page_size: 50 }),
       }),
-      fetch(`${NOTION_API}/databases/${SHARED_NOTION_DBS.staffCondition}/query`, {
+      fetch(`${NOTION_API}/databases/${dbConfig.staffConditionDbId}/query`, {
         method: 'POST',
         headers: notionHeaders(notionKey),
         body: JSON.stringify({
-          filter: { property: '企業名', select: { equals: company.shortName } },
           sorts: [{ property: '記録日', direction: 'descending' }],
           page_size: 100,
         }),
@@ -141,12 +134,14 @@ export async function POST(request: Request) {
 
     const profiles = profileData.results.map(p => {
       const props = p.properties as PropMap
+      // 企業別DB方式のプロパティ名（氏名→name, スキル→skillSet等）
+      const skillsArr = (props['スキル'] as { multi_select?: Array<{ name?: string }> } | undefined)?.multi_select ?? []
       return {
-        name:        getText(props, '社員名'),
-        role:        props['役職']?.select?.name        ?? '',
-        department:  getText(props, '部署'),
-        function_:   props['得意機能']?.select?.name    ?? '',
-        skills:      getText(props, 'スキルセット'),
+        name:        getText(props, '氏名') || getText(props, '社員名'),
+        role:        getText(props, '役職') || (props['役職']?.select?.name ?? ''),
+        department:  props['部署']?.select?.name ?? getText(props, '部署'),
+        function_:   props['得意機能']?.select?.name ?? '',
+        skills:      skillsArr.map(s => s.name ?? '').join(', ') || getText(props, 'スキルセット'),
         certs:       getText(props, '資格'),
         condition:   '',
         workload:    '',
@@ -165,9 +160,10 @@ export async function POST(request: Request) {
         seen.add(name)
         const staff = profiles.find(p => p.name === name)
         if (staff) {
-          staff.condition  = props['コンディション']?.select?.name ?? ''
-          staff.workload   = props['業務負荷']?.select?.name        ?? ''
-          staff.workStyle  = props['勤務形態']?.select?.name        ?? ''
+          // 企業別DB方式: 体調→condition, コメント→memo
+          staff.condition  = props['体調']?.select?.name ?? props['コンディション']?.select?.name ?? ''
+          staff.workload   = props['業務負荷']?.select?.name ?? ''
+          staff.workStyle  = props['勤務形態']?.select?.name ?? ''
         }
       }
     }
