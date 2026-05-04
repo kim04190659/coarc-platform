@@ -10,15 +10,17 @@
 //    - 新規プロジェクト作成モーダル
 //    - プロジェクトカードクリック → タスク詳細を展開
 //    - タスクのステータス変更 → Notion 即時反映
+//    - プロジェクト名クリック → 詳細ページ（/operations/projects/[id]）
 // =====================================================
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { useCompany } from '@/contexts/CompanyContext'
 import type { Project, ProjectTask } from '@/app/api/projects/list/route'
 import {
   FolderOpen, Plus, ChevronDown, ChevronUp,
   Calendar, User, AlertCircle, CheckCircle2,
-  Circle, Clock, Loader2, X,
+  Circle, Clock, Loader2, X, ArrowRight,
 } from 'lucide-react'
 
 // ── 優先度バッジ ─────────────────────────────────────
@@ -217,7 +219,16 @@ function ProjectCard({
           </button>
         </div>
 
-        <h3 className="font-semibold text-gray-900 text-sm mb-2">{project.projectName}</h3>
+        {/* プロジェクト名 → 詳細ページへのリンク */}
+        <Link
+          href={`/operations/projects/${project.id}`}
+          className="group flex items-center gap-1 mb-2 hover:text-blue-600 transition-colors"
+        >
+          <h3 className="font-semibold text-gray-900 text-sm group-hover:text-blue-600">
+            {project.projectName}
+          </h3>
+          <ArrowRight size={14} className="text-gray-300 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
+        </Link>
 
         <div className="flex flex-wrap gap-3 text-xs text-gray-500 mb-3">
           {project.assignee && (
