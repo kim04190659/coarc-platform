@@ -32,6 +32,7 @@ import {
   Settings,
   Activity,
   Building2,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -86,6 +87,13 @@ export const FEATURES: Feature[] = [
   },
 
   // ===== AI拡張機能 > 基本AIセット（ai-basic） =====
+  {
+    id:    'dispatch',
+    label: '⚡ AIディスパッチ / 育成',
+    href:  '/operations/dispatch',
+    icon:  Zap,
+    group: 'ai-basic',
+  },
   {
     id:    'ai-advisor',
     label: '🤖 AI経営顧問',
