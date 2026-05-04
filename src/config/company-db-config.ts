@@ -75,6 +75,26 @@ export const SHARED_NOTION_DBS = {
    */
   staffCondition: '9016c6d2857b4afcb55122d53671445d',
 
+  /**
+   * 📁 プロジェクト管理DB（ProjectManagement）— Sprint 11 追加
+   * Notion: 🔧 標準基盤 > 📁 プロジェクト管理DB | ProjectManagement
+   * URL: https://www.notion.so/74ec2a90d96b4f48966b17ad9b426532
+   *
+   * プロパティ: プロジェクト名/企業名/ステータス/優先度/担当者/依頼内容/開始日/完了予定日/進捗メモ
+   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
+   */
+  projectManagement: '74ec2a90d96b4f48966b17ad9b426532',
+
+  /**
+   * ✅ プロジェクトタスクDB（ProjectTask）— Sprint 11 追加
+   * Notion: 🔧 標準基盤 > ✅ プロジェクトタスクDB | ProjectTask
+   * URL: https://www.notion.so/24e522198f9c47c5860707f800d27e60
+   *
+   * プロパティ: タスク名/企業名/プロジェクト名/担当者/ステータス/優先度/期限/成果物/メモ
+   * 「企業名」SELECTで企業別フィルタリング。全企業共通DB。
+   */
+  projectTask: '24e522198f9c47c5860707f800d27e60',
+
   // 今後追加予定
   // trainingLog: '',  // 研修ログDB
 } as const

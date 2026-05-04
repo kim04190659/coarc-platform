@@ -33,6 +33,7 @@ import {
   Activity,
   Building2,
   Zap,
+  FolderOpen,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -83,6 +84,13 @@ export const FEATURES: Feature[] = [
     label: '💚 社員コンディション',
     href:  '/operations/staff',
     icon:  Users,
+    group: 'core',
+  },
+  {
+    id:    'projects',
+    label: '📁 プロジェクト管理',
+    href:  '/operations/projects',
+    icon:  FolderOpen,
     group: 'core',
   },
 
