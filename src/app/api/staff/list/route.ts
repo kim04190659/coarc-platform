@@ -66,7 +66,8 @@ async function fetchStaffProfiles(
     method: 'POST',
     headers: notionHeaders(notionKey),
     body: JSON.stringify({
-      sorts: [{ property: '氏名', direction: 'ascending' }],
+      // ✅ title型プロパティはsortキーに使えないため created_time で代替
+      sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
       page_size: 50,
     }),
   })
@@ -83,25 +84,24 @@ async function fetchStaffProfiles(
       title?:     Array<{ plain_text?: string }>
       select?:    { name?: string }
       rich_text?: Array<{ plain_text?: string }>
-      number?:    number
     }>
 
     const getText = (p: typeof props[string] | undefined) =>
       p?.title?.[0]?.plain_text ?? p?.rich_text?.[0]?.plain_text ?? ''
 
-    // 企業別DB方式のプロパティ名にマッピング（multi_select は型アサーションで取得）
-    const skillProp = props['スキル'] as { multi_select?: Array<{ name?: string }> } | undefined
-    const skills = skillProp?.multi_select?.map(s => s.name ?? '').join(', ') ?? ''
+    // ✅ 企業別DBのプロパティ名にマッピング
+    //   社員名(title) / 部署(select) / 役職(text) / 在籍状況(select)
+    //   入社年(text) / スキルセット(text) / 得意機能(text) / 資格(text)
     return {
       pageId:          page.id as string,
-      name:            getText(props['氏名']),
-      department:      props['部署']?.select?.name ?? getText(props['部署']),
+      name:            getText(props['社員名']) || getText(props['氏名']),  // 新DB=社員名, 旧DB=氏名
+      department:      props['部署']?.select?.name ?? '',
       role:            getText(props['役職']),
-      primaryFunction: '',   // 企業別DBでは未定義（将来拡張予定）
-      skillSet:        skills || getText(props['スキルセット']),
-      certifications:  '',   // 企業別DBでは未定義（将来拡張予定）
-      status:          props['雇用形態']?.select?.name ?? '在籍',
-      joinYear:        props['入社年']?.number ?? 0,
+      primaryFunction: getText(props['得意機能']),
+      skillSet:        getText(props['スキルセット']),
+      certifications:  getText(props['資格']),
+      status:          props['在籍状況']?.select?.name ?? props['雇用形態']?.select?.name ?? '在籍',
+      joinYear:        parseInt(getText(props['入社年'])) || 0,
     }
   })
 }
