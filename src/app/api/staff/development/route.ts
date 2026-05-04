@@ -172,18 +172,8 @@ export async function POST(request: Request) {
 
     const outputFormat = [
       '【出力形式（JSON）— 必ずこの形式のみで回答すること】',
-      '{',
-      '  "staffName":"名前",',
-      '  "summary":"現状評価2文以内",',
-      '  "strengths":["強み1","強み2","強み3（最大3件）"],',
-      '  "growthAreas":["成長余地1","成長余地2","成長余地3（最大3件）"],',
-      '  "actions":[',
-      '    {"category":"研修|資格取得|OJT|メンタリング|異動・ローテーション","title":"20字以内","description":"1〜2文","timeline":"時期","priority":"高|中|低"},',
-      '    ... 最大4件',
-      '  ],',
-      '  "nextReview":"推奨レビュー時期（例: 3ヶ月後、半年後）"',
-      '}',
-      '※ JSONのみ出力。説明文・コードブロック不要。',
+      '{"staffName":"名前","summary":"現状評価2文以内","strengths":["強み1","強み2","強み3"],"growthAreas":["成長余地1","成長余地2","成長余地3"],"actions":[{"category":"研修","title":"20字以内","description":"1〜2文","timeline":"時期","priority":"高"},{"category":"OJT","title":"20字以内","description":"1〜2文","timeline":"時期","priority":"中"}],"nextReview":"3ヶ月後"}',
+      '※ 上記JSONをそのまま出力。コードブロック（```）・説明文・マークダウン・改行は一切不要。actionsは最大4件。',
     ].join('\n')
 
     const res = await client.messages.create({
@@ -221,9 +211,16 @@ ${outputFormat}`,
 
     const rawText = res.content[0]?.type === 'text' ? res.content[0].text.trim() : '{}'
 
+    // ── コードブロック・前後の余分なテキストを除去 ──
+    const cleanText = rawText
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/i, '')
+      .replace(/^[^{]*({[\s\S]*})[^}]*$/, '$1')
+      .trim()
+
     let plan: DevelopmentPlan
     try {
-      plan = JSON.parse(rawText) as DevelopmentPlan
+      plan = JSON.parse(cleanText) as DevelopmentPlan
     } catch {
       console.error('[staff/development] JSONパースエラー:', rawText)
       return NextResponse.json(

@@ -177,12 +177,8 @@ export async function POST(request: Request) {
 
     const outputFormat = [
       '【出力形式（JSON）— 必ずこの形式のみで回答すること】',
-      '{"recommendations":[',
-      '  {"rank":1,"staffName":"名前","role":"役職","department":"部署","matchScore":85,"matchReason":"マッチ理由1〜2文","caution":"注意事項または「なし」"},',
-      '  {"rank":2,...},',
-      '  {"rank":3,...}',
-      '],"reasoning":"総合判断の補足コメント1〜2文"}',
-      '※ JSONのみ出力。説明文・コードブロック・マークダウン不要。簡潔さを最優先。',
+      '{"recommendations":[{"rank":1,"staffName":"名前","role":"役職","department":"部署","matchScore":85,"matchReason":"マッチ理由1〜2文","caution":"注意事項または なし"},{"rank":2,"staffName":"名前","role":"役職","department":"部署","matchScore":75,"matchReason":"マッチ理由1〜2文","caution":"注意事項または なし"},{"rank":3,"staffName":"名前","role":"役職","department":"部署","matchScore":65,"matchReason":"マッチ理由1〜2文","caution":"注意事項または なし"}],"reasoning":"総合判断の補足コメント1〜2文"}',
+      '※ 上記JSONをそのまま出力。コードブロック（```）・説明文・マークダウン・改行は一切不要。',
     ].join('\n')
 
     const staffInfo = formatStaffForPrompt(profiles.slice(0, 12))  // 上位12件以内
@@ -216,10 +212,18 @@ ${outputFormat}`,
 
     const rawText = res.content[0]?.type === 'text' ? res.content[0].text.trim() : '{}'
 
+    // ── コードブロック・前後の余分なテキストを除去 ──
+    // ```json ... ``` や ``` ... ``` が混入することがあるため取り除く
+    const cleanText = rawText
+      .replace(/^```(?:json)?\s*/i, '')   // 先頭の ```json または ``` を除去
+      .replace(/\s*```\s*$/i, '')          // 末尾の ``` を除去
+      .replace(/^[^{]*({[\s\S]*})[^}]*$/, '$1')  // { } の外側を除去
+      .trim()
+
     // ── JSON パース（壊れていたらフォールバック）──
     let parsed: { recommendations: DispatchRecommendation[]; reasoning: string }
     try {
-      parsed = JSON.parse(rawText) as typeof parsed
+      parsed = JSON.parse(cleanText) as typeof parsed
     } catch {
       console.error('[staff/dispatch] JSONパースエラー:', rawText)
       return NextResponse.json(
