@@ -53,6 +53,8 @@
   🔄 開発管理:             355960a91e2381ae9870ec42e8fabb9e
     🗂️ スプリント管理DB:   f44343cd14214709b6f17bd910681f99
 🏢 企業展開ページ:         355960a91e2381b49cb2fa02dec4ea5a  ← NOTION_PARENT_PAGE_ID
+  📋 メニュー設計ヒアリング結果DB: 6744026a60764853a3d9c7ff26d630ad  ← Sprint #29 登録済み
+  DataSource: collection://3b3e08c7-c88f-455f-b07b-3c19829da693
 🎯 営業・提案活動:         355960a91e2381488846e433a48bd808
 
 ■ 企業ページID

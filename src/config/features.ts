@@ -36,6 +36,7 @@ import {
   FolderOpen,
   MessageCircle,
   ScrollText,
+  Wand2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -230,6 +231,13 @@ export const FEATURES: Feature[] = [
   },
 
   // ===== 管理・設定（admin） =====
+  {
+    id:    'menu-design-agent',
+    label: '🪄 メニュー設計エージェント',
+    href:  '/admin/menu-design-agent',
+    icon:  Wand2,
+    group: 'admin',
+  },
   {
     id:    'settings',
     label: '⚙️ 企業プロファイル設定',
