@@ -95,6 +95,13 @@ export const FEATURES: Feature[] = [
     icon:  FolderOpen,
     group: 'core',
   },
+  {
+    id:    'ai-chat',
+    label: '💬 AIフリーチャット',
+    href:  '/operations/ai-chat',
+    icon:  MessageCircle,
+    group: 'core',
+  },
 
   // ===== AI拡張機能 > 基本AIセット（ai-basic） =====
   {
@@ -134,13 +141,6 @@ export const FEATURES: Feature[] = [
   },
 
   // ── AIフリーチャット・ログ ─────────────────────────────
-  {
-    id:    'ai-chat',
-    label: '💬 AIフリーチャット',
-    href:  '/operations/ai-chat',
-    icon:  MessageCircle,
-    group: 'ai-basic',
-  },
   {
     id:    'ai-logs',
     label: '📜 AIログ分析',
