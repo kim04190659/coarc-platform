@@ -164,7 +164,7 @@ export const FEATURES: Feature[] = [
     href:  '/ai-ext/cs-quality',
     icon:  ShieldAlert,
     group: 'ai-specialized',
-    coming: true,
+    // Sprint #21 で実装完了 — coming: true を解除
   },
   {
     id:    'staff-turnover',
