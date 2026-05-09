@@ -18,6 +18,7 @@
 // =====================================================
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Gamepad2, Loader2, Zap, Star, Clock, ChevronRight,
   Users, RefreshCw, Lock, Sparkles, Filter,
@@ -65,11 +66,13 @@ function GameCard({
   isRecommended,
   recommendReason,
   priority,
+  onPlay,
 }: {
   game:            GameDef
   isRecommended:   boolean
   recommendReason: string
   priority:        number
+  onPlay:          (game: GameDef) => void   // プレイ開始コールバック
 }) {
   const catColor = CATEGORY_COLORS[game.category]
 
@@ -135,7 +138,10 @@ function GameCard({
           </div>
 
           {game.available ? (
-            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+            <button
+              onClick={() => onPlay(game)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+            >
               プレイ開始
               <ChevronRight className="w-3 h-3" />
             </button>
@@ -155,7 +161,8 @@ function GameCard({
 
 export default function SkillGameSelectPage() {
   const { companyId } = useCompany()
-  const industry = getIndustryByCompanyId(companyId)
+  const router        = useRouter()
+  const industry      = getIndustryByCompanyId(companyId)
 
   // ── State ──
   const [staffList,  setStaffList]  = useState<Array<{ name: string; role: string; department: string }>>([])
@@ -164,6 +171,13 @@ export default function SkillGameSelectPage() {
   const [recLoading, setRecLoading] = useState(false)
   const [activeTab,  setActiveTab]  = useState<'all' | GameCategory>('all')
   const [difficulty, setDifficulty] = useState<0 | 1 | 2 | 3>(0)  // 0 = すべて
+
+  // ── プレイ開始：プレイ画面に遷移 ──
+  function handlePlay(game: GameDef) {
+    const params = new URLSearchParams({ companyId })
+    if (staffName) params.set('staffName', staffName)
+    router.push(`/skill-game/play/${game.id}?${params.toString()}`)
+  }
 
   // ── 社員一覧取得 ──
   useEffect(() => {
@@ -363,6 +377,7 @@ export default function SkillGameSelectPage() {
               isRecommended={!!rec}
               recommendReason={rec?.reason ?? ''}
               priority={rec?.priority ?? 0}
+              onPlay={handlePlay}
             />
           )
         })}
