@@ -179,10 +179,11 @@ export default function MenuDesignAgentPage() {
   const [form,      setForm]      = useState(INITIAL_FORM)
   const [pageId,    setPageId]    = useState<string | undefined>(undefined)
 
-  const [loading,  setLoading]  = useState(false)
-  const [saving,   setSaving]   = useState(false)
-  const [saved,    setSaved]    = useState(false)
-  const [error,    setError]    = useState('')
+  const [loading,      setLoading]      = useState(false)
+  const [saving,       setSaving]       = useState(false)
+  const [saved,        setSaved]        = useState(false)
+  const [aiSaved,      setAiSaved]      = useState(false)  // AI提案ボタン押下後の完了状態
+  const [error,        setError]        = useState('')
 
   // ── 企業選択時に既存ヒアリングデータを読み込む ──
   const loadExisting = useCallback(async (cId: string) => {
@@ -228,13 +229,26 @@ export default function MenuDesignAgentPage() {
   // ── フォーム値更新ヘルパー ──
   const set = <K extends keyof typeof INITIAL_FORM>(
     key: K, value: typeof INITIAL_FORM[K]
-  ) => setForm(f => ({ ...f, [key]: value }))
+  ) => {
+    setForm(f => ({ ...f, [key]: value }))
+    setSaved(false)    // 値を変えたら「保存済み」表示をリセット
+    setAiSaved(false)
+  }
 
-  // ── 保存処理 ──
-  const save = async (goNext = false) => {
-    if (!companyId) return
+  // ── ステップ移動（saved フラグもリセット）──
+  const goToStep = (n: number) => {
+    setStep(n)
+    setSaved(false)
+    setAiSaved(false)
+    setError('')
+  }
+
+  // ── Notion 保存（共通処理）──
+  const saveToNotion = async (): Promise<boolean> => {
+    if (!companyId) return false
     setSaving(true)
     setSaved(false)
+    setAiSaved(false)
     setError('')
     try {
       const company = COMPANIES.find(c => c.id === companyId)
@@ -252,15 +266,33 @@ export default function MenuDesignAgentPage() {
       const data = await res.json()
       if (data.success) {
         setPageId(data.pageId)
-        setSaved(true)
-        if (goNext) setStep(s => s + 1)
+        return true
       } else {
         setError(data.error ?? '保存に失敗しました')
+        return false
       }
     } catch {
       setError('通信エラーが発生しました')
+      return false
     } finally {
       setSaving(false)
+    }
+  }
+
+  // ── 「保存して次へ」ボタン ──
+  const save = async (goNext = false) => {
+    const ok = await saveToNotion()
+    if (ok) {
+      setSaved(true)
+      if (goNext) goToStep(step + 1)
+    }
+  }
+
+  // ── 「保存して AI に提案してもらう」ボタン ──
+  const saveAndRequestAI = async () => {
+    const ok = await saveToNotion()
+    if (ok) {
+      setAiSaved(true)   // AI提案待ち状態を表示（Sprint #31 で実際の提案処理に差し替え）
     }
   }
 
@@ -350,7 +382,7 @@ export default function MenuDesignAgentPage() {
 
           <div className="flex justify-end pt-2">
             <button
-              onClick={() => setStep(2)}
+              onClick={() => goToStep(2)}
               disabled={!companyId || loading}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
@@ -436,7 +468,7 @@ export default function MenuDesignAgentPage() {
 
           <div className="flex justify-between pt-2">
             <button
-              onClick={() => setStep(1)}
+              onClick={() => goToStep(1)}
               className="flex items-center gap-1.5 px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />戻る
@@ -504,7 +536,7 @@ export default function MenuDesignAgentPage() {
 
           <div className="flex justify-between pt-2">
             <button
-              onClick={() => setStep(2)}
+              onClick={() => goToStep(2)}
               className="flex items-center gap-1.5 px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />戻る
@@ -600,17 +632,30 @@ export default function MenuDesignAgentPage() {
             </div>
           )}
 
-          {/* 保存済み表示 */}
-          {saved && !error && (
+          {/* 保存済み表示（「保存」ボタン押下後） */}
+          {saved && !aiSaved && !error && (
             <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
               <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
               Notion に保存しました
             </div>
           )}
 
+          {/* AI提案リクエスト完了表示（「AIに提案してもらう」ボタン押下後） */}
+          {aiSaved && !error && (
+            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-1">
+              <div className="flex items-center gap-2 text-sm font-semibold text-indigo-700">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                ヒアリング結果を Notion に保存しました
+              </div>
+              <p className="text-xs text-indigo-600 pl-6">
+                Sprint #31 で AI がヒアリング内容を分析し、最適なメニュー構成を提案します。
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-between pt-2">
             <button
-              onClick={() => setStep(3)}
+              onClick={() => goToStep(3)}
               className="flex items-center gap-1.5 px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />戻る
@@ -627,13 +672,13 @@ export default function MenuDesignAgentPage() {
                 保存
               </button>
 
-              {/* AI提案へ（Sprint #31 で機能追加） */}
+              {/* AI提案へ（Sprint #31 で提案処理を追加予定） */}
               <button
-                onClick={() => save(false)}
+                onClick={() => saveAndRequestAI()}
                 disabled={!form.aiExperience || saving}
                 className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                <Wand2 className="w-4 h-4" />
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
                 保存して AI に提案してもらう →
               </button>
             </div>
