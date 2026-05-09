@@ -180,7 +180,7 @@ export const FEATURES: Feature[] = [
     href:  '/ai-ext/sales-forecast',
     icon:  TrendingUp,
     group: 'ai-specialized',
-    coming: true,
+    // Sprint #23 で実装完了 — coming: true を解除
   },
 
   // ===== AI拡張機能 > 研修・学習（ai-training） =====
