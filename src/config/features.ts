@@ -156,7 +156,7 @@ export const FEATURES: Feature[] = [
     href:  '/ai-ext/churn-risk',
     icon:  TrendingDown,
     group: 'ai-specialized',
-    coming: true,
+    // Sprint #20 で実装完了 — coming: true を解除
   },
   {
     id:    'cs-quality',
