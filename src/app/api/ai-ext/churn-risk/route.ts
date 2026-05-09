@@ -59,6 +59,16 @@ function notionHeaders(apiKey: string) {
   }
 }
 
+// ── 評価テキスト → 数値スコアに変換 ──────────────────
+// 北野リゾート等のDBは評価が select 型（"⭐5 大変満足" 等）で格納されている
+
+function parseEvaluationScore(selectName: string | undefined): number | null {
+  if (!selectName) return null
+  // "⭐5 大変満足" → 5, "⭐2 不満" → 2 のように先頭の数字を取得
+  const match = selectName.match(/[1-5]/)
+  return match ? parseInt(match[0], 10) : null
+}
+
 // ── フィードバックDB取得 ─────────────────────────────
 
 async function fetchFeedbacks(dbId: string, notionKey: string) {
@@ -84,14 +94,41 @@ async function fetchFeedbacks(dbId: string, notionKey: string) {
       number?:     number
     }>
 
+    // title型 / rich_text型（text型）の両方を汎用取得
     const getText = (p: typeof props[string] | undefined) =>
       p?.title?.[0]?.plain_text ?? p?.rich_text?.[0]?.plain_text ?? ''
 
+    // 評価は select 型（例: "⭐3 普通"）なので select?.name から読む
+    // 数値型DBの場合は number でもフォールバック
+    const rawScore = props['評価']?.select?.name ?? props['スコア']?.select?.name ?? null
+    const score = rawScore
+      ? parseEvaluationScore(rawScore)
+      : (props['評価']?.number ?? null)
+
+    // フィードバック内容は rich_text型（text型）の「フィードバック内容」プロパティ
+    // 「件名」（title型）もフォールバックとして利用
+    const content =
+      getText(props['フィードバック内容']) ||
+      getText(props['コメント'])           ||
+      getText(props['内容'])               ||
+      getText(props['件名'])               // title型をフォールバック
+
+    // AI感情分析は text型（JSON文字列）— selectではないので sentimentとして短縮
+    const aiJson = getText(props['AI感情分析'])
+    let sentiment = props['感情']?.select?.name ?? ''
+    if (!sentiment && aiJson) {
+      try {
+        const parsed = JSON.parse(aiJson) as { sentiment?: string }
+        sentiment = parsed.sentiment ?? ''
+      } catch { /* JSONパース失敗は無視 */ }
+    }
+
     return {
       type:      'feedback' as const,
-      content:   getText(props['コメント']) || getText(props['内容']) || getText(props['フィードバック内容']),
-      score:     props['評価']?.number ?? props['スコア']?.number ?? null,
-      sentiment: props['感情']?.select?.name ?? props['センチメント']?.select?.name ?? '',
+      content,
+      score,     // 1〜5 の数値 or null
+      scoreLabel: rawScore ?? '',  // "⭐2 不満" などの元テキスト
+      sentiment,
       category:  props['カテゴリ']?.select?.name ?? props['分類']?.select?.name ?? '',
     }
   }).filter(f => f.content)
@@ -164,10 +201,11 @@ export async function GET(request: Request) {
     const totalContacts = contacts.length
 
     // ② 上位12件に絞る（JSON途中切れ防止）
-    // フィードバックは低スコア順（ネガティブ優先）・問い合わせは全件
+    // スコアありフィードバック → 低評価順（ネガティブ優先）
+    // スコアなしフィードバック → 最新3件
     const negativeFeedbacks = feedbacks
       .filter(f => f.score !== null)
-      .sort((a, b) => (a.score ?? 5) - (b.score ?? 5))
+      .sort((a, b) => (a.score ?? 5) - (b.score ?? 5))  // 1 → 5 の昇順（低評価優先）
       .slice(0, 6)
 
     const otherFeedbacks = feedbacks
@@ -201,9 +239,11 @@ export async function GET(request: Request) {
     // ③ Haiku に分析依頼
     const dataText = allItems.map((item, i) => {
       if (item.type === 'feedback') {
-        return `[フィードバック${i + 1}] 評価:${item.score ?? '不明'} 感情:${item.sentiment} カテゴリ:${item.category} 内容:${item.content.slice(0, 80)}`
+        // scoreLabel は "⭐2 不満" 等の人間が読める形式
+        const evalStr = item.scoreLabel || (item.score !== null ? `${item.score}点` : '評価なし')
+        return `[フィードバック${i + 1}] 評価:${evalStr} 感情:${item.sentiment || '不明'} カテゴリ:${item.category || '未分類'} 内容:${item.content.slice(0, 80)}`
       } else {
-        return `[問い合わせ${i + 1}] ステータス:${item.status} 優先度:${item.priority} カテゴリ:${item.category} 件名:${item.content.slice(0, 80)}`
+        return `[問い合わせ${i + 1}] ステータス:${item.status || '不明'} 優先度:${item.priority || '未設定'} カテゴリ:${item.category || '未分類'} 件名:${item.content.slice(0, 80)}`
       }
     }).join('\n')
 
