@@ -67,7 +67,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'all',
     estimatedMinutes: 5,
     skillTags:        ['顧客対応', '傾聴', '丁寧語', '電話応対'],
-    available:        false,
+    available:        true,   // Sprint #25 で公開
     sprint:           25,
   },
   {
@@ -80,7 +80,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'all',
     estimatedMinutes: 8,
     skillTags:        ['クレーム対応', '共感力', '問題解決', '謝罪表現'],
-    available:        false,
+    available:        true,   // Sprint #25 で公開
     sprint:           25,
   },
   {
@@ -93,7 +93,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'all',
     estimatedMinutes: 10,
     skillTags:        ['高度クレーム対応', '交渉力', 'エスカレーション判断', '感情コントロール'],
-    available:        false,
+    available:        true,   // Sprint #25 で公開
     sprint:           25,
   },
 
@@ -108,7 +108,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'all',
     estimatedMinutes: 5,
     skillTags:        ['報連相', 'チームワーク', 'コミュニケーション', '情報共有'],
-    available:        false,
+    available:        true,   // Sprint #25 で公開
     sprint:           25,
   },
   {
@@ -121,7 +121,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'all',
     estimatedMinutes: 7,
     skillTags:        ['傾聴', '共感', 'コーチング', '心理的安全性'],
-    available:        false,
+    available:        true,   // Sprint #25 で公開
     sprint:           25,
   },
 
