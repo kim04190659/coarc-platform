@@ -34,6 +34,8 @@ import {
   Building2,
   Zap,
   FolderOpen,
+  MessageCircle,
+  ScrollText,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -128,6 +130,22 @@ export const FEATURES: Feature[] = [
     label: '📈 KPI目標管理',
     href:  '/management/kpi',
     icon:  TrendingUp,
+    group: 'ai-basic',
+  },
+
+  // ── AIフリーチャット・ログ ─────────────────────────────
+  {
+    id:    'ai-chat',
+    label: '💬 AIフリーチャット',
+    href:  '/operations/ai-chat',
+    icon:  MessageCircle,
+    group: 'ai-basic',
+  },
+  {
+    id:    'ai-logs',
+    label: '📜 AIログ分析',
+    href:  '/operations/ai-logs',
+    icon:  ScrollText,
     group: 'ai-basic',
   },
 
