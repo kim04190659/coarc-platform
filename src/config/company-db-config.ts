@@ -110,7 +110,7 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
     // ── 社員管理 ──────────────────────────────────────
     staffProfileDbId:   'fac9284b779942888e892ca49d6b1e42',  // Sprint #15 登録済み
     staffConditionDbId: '999ee8aad7f542fd8cc67cf479430af6',  // Sprint #15 登録済み
-    trainingLogDbId:    '',
+    trainingLogDbId:    '1e34a589945a42819bdda1a6f362454c',  // Sprint #28 登録済み
 
     // ── 経営・KPI ─────────────────────────────────────
     kpiGoalsDbId:       '5651cb54fb6e44a6b3f3fd868a230819',  // Sprint #15 登録済み
@@ -142,7 +142,7 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
 
     staffProfileDbId:   '06729c0a6ac141b2a3ef91b298750047',  // Sprint #15 登録済み
     staffConditionDbId: '9856119a99014c4a9f7b6cff35ebee0a',  // Sprint #15 登録済み
-    trainingLogDbId:    '',
+    trainingLogDbId:    'dca69498fd824ed086a7505ffeb08502',  // Sprint #28 登録済み
 
     kpiGoalsDbId:       '0da44ddd32184b5b88dee18b65bf0965',  // Sprint #15 登録済み
     productQualityDbId: '',
@@ -170,7 +170,7 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
 
     staffProfileDbId:   '1b04bdf965be4996b346f6b296d588dc',  // Sprint #15 登録済み
     staffConditionDbId: '33b4dd61bf344d5e8e892d9eb7174348',  // Sprint #15 登録済み
-    trainingLogDbId:    '',
+    trainingLogDbId:    '49e4cc0ac6244e6fbcabc90f5fb72e7f',  // Sprint #28 登録済み
 
     kpiGoalsDbId:       '9555f4dd8eaf4e429b583af44277311b',  // Sprint #15 登録済み
     productQualityDbId: '',
@@ -198,7 +198,7 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
 
     staffProfileDbId:   '096c8ce43a7f45089dd8613f9a5d9ab5',  // Sprint #15 登録済み
     staffConditionDbId: '11b071a51eff4976ac65f4658cbb4249',  // Sprint #15 登録済み
-    trainingLogDbId:    '',
+    trainingLogDbId:    'ba56c678c2ff4d9d8295a5b93e95b14c',  // Sprint #28 登録済み
 
     kpiGoalsDbId:       'c6853094299840c59d493bd5084dbab8',  // Sprint #15 登録済み
     productQualityDbId: '',

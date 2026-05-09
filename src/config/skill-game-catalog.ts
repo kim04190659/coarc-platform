@@ -211,7 +211,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'hotel',
     estimatedMinutes: 10,
     skillTags:        ['VIP接客', 'ホスピタリティ', 'おもてなし', 'サービスリカバリー'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
   {
@@ -224,7 +224,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'hotel',
     estimatedMinutes: 6,
     skillTags:        ['フロント対応', 'チェックイン', '英語フレーズ', '客室管理'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
   {
@@ -237,7 +237,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'hotel',
     estimatedMinutes: 8,
     skillTags:        ['クレーム対応', 'ホテル知識', '設備トラブル', '補償交渉'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
 
@@ -252,7 +252,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'medical',
     estimatedMinutes: 6,
     skillTags:        ['患者対応', '医療コミュニケーション', '情報提供', '不安解消'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
   {
@@ -265,7 +265,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'medical',
     estimatedMinutes: 8,
     skillTags:        ['チーム医療', '多職種連携', '情報共有', 'SBAR'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
   {
@@ -278,7 +278,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'medical',
     estimatedMinutes: 7,
     skillTags:        ['医療安全', 'インシデント防止', '確認手順', 'KYT'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
 
@@ -293,7 +293,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'food',
     estimatedMinutes: 8,
     skillTags:        ['繁忙期対応', 'チームワーク', 'オペレーション', '優先順位付け'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
   {
@@ -306,7 +306,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'food',
     estimatedMinutes: 5,
     skillTags:        ['食品衛生', 'アレルギー対応', '温度管理', 'HACCP'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
   {
@@ -319,7 +319,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'food',
     estimatedMinutes: 8,
     skillTags:        ['クレーム対応', '飲食知識', '謝罪・補償', '再発防止'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
 
@@ -334,7 +334,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'retail',
     estimatedMinutes: 6,
     skillTags:        ['接客', 'レジ対応', '商品案内', '丁寧語'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
   {
@@ -347,7 +347,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'retail',
     estimatedMinutes: 7,
     skillTags:        ['在庫管理', 'クレーム対応', '返品処理', '価格対応'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
   {
@@ -360,7 +360,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'retail',
     estimatedMinutes: 10,
     skillTags:        ['トラブル対応', '保安知識', 'リスク管理', '通報手順'],
-    available:        false,
+    available:        true,   // Sprint #27 で公開
     sprint:           27,
   },
 ]
