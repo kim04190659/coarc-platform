@@ -83,6 +83,10 @@ export type CompanyDbConfig = {
   // ── 企業プロファイル ──────────────────────────────
   /** 🏢 企業プロファイルDB（AI顧問カスタマイズ用・未実装） */
   companyProfileDbId: string
+
+  // ── AI ログ ───────────────────────────────────────
+  /** 🤖 AI質問ログDB（フリーチャット・各AIページの質問履歴）Sprint #18 登録済み */
+  aiChatLogDbId: string
 }
 
 // ──────────────────────────────────────────────────
@@ -121,6 +125,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
 
     // ── 企業プロファイル ──────────────────────────────
     companyProfileDbId: '',
+
+    // ── AI ログ ───────────────────────────────────────
+    aiChatLogDbId: '0506209381de48e897c8963deda23057',  // Sprint #18 登録済み
   },
 
   // ══════════════════════════════════════════════════
@@ -146,6 +153,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
     projectTaskDbId:       'c617ae3e8d6048f68a4564c2f2923a6f',  // Sprint #15 登録済み
 
     companyProfileDbId: '',
+
+    // ── AI ログ ───────────────────────────────────────
+    aiChatLogDbId: 'aa764bf1ccfa4936bc38d383b1e5288f',  // Sprint #18 登録済み
   },
 
   // ══════════════════════════════════════════════════
@@ -171,6 +181,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
     projectTaskDbId:       '25895e4aec4042dd8215cc51613a4bd2',  // Sprint #15 登録済み
 
     companyProfileDbId: '',
+
+    // ── AI ログ ───────────────────────────────────────
+    aiChatLogDbId: 'f82fa296c28f421cbb9f09669ff081ec',  // Sprint #18 登録済み
   },
 
   // ══════════════════════════════════════════════════
@@ -196,6 +209,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
     projectTaskDbId:       '5825c3d5f370441f802cee2b1f21221c',  // Sprint #15 登録済み
 
     companyProfileDbId: '',
+
+    // ── AI ログ ───────────────────────────────────────
+    aiChatLogDbId: 'd689c7a5dff14460a47bda3818aa6f97',  // Sprint #18 登録済み
   },
 }
 
@@ -217,5 +233,6 @@ export function getCompanyDbConfig(companyId: string): CompanyDbConfig {
     projectManagementDbId: '',
     projectTaskDbId:       '',
     companyProfileDbId:    '',
+    aiChatLogDbId:         '',
   }
 }
