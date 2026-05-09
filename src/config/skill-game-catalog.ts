@@ -139,7 +139,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'all',
     estimatedMinutes: 5,
     skillTags:        ['AI活用', 'DX基礎', 'ツール活用', 'AI倫理'],
-    available:        false,
+    available:        true,   // Sprint #26 で公開
     sprint:           26,
   },
   {
@@ -152,7 +152,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'all',
     estimatedMinutes: 8,
     skillTags:        ['プロンプト設計', 'AI協働', '言語化力', '業務自動化'],
-    available:        false,
+    available:        true,   // Sprint #26 で公開
     sprint:           26,
   },
 
@@ -167,7 +167,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'all',
     estimatedMinutes: 5,
     skillTags:        ['PDCA', '業務改善', '論理的思考', 'カイゼン'],
-    available:        false,
+    available:        true,   // Sprint #26 で公開
     sprint:           26,
   },
   {
@@ -180,7 +180,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'all',
     estimatedMinutes: 7,
     skillTags:        ['KPI管理', 'データ分析', '数値読解', '経営指標'],
-    available:        false,
+    available:        true,   // Sprint #26 で公開
     sprint:           26,
   },
   {
@@ -193,7 +193,7 @@ export const GAME_CATALOG: GameDef[] = [
     industry:         'all',
     estimatedMinutes: 12,
     skillTags:        ['業務改善', '提案力', 'コスト意識', 'イノベーション'],
-    available:        false,
+    available:        true,   // Sprint #26 で公開
     sprint:           26,
   },
 
