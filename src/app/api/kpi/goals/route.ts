@@ -5,14 +5,16 @@
 //  ■ GET ?companyId=xxx
 //    → 企業の全KPI目標をNotionから取得して返す
 //
-//  ■ POST { companyId, kpiName, targetValue }
-//    → Notionの既存レコードを更新、なければ新規作成
+//  ■ POST { pageId, targetValue }
+//    → NotionのKPI目標値（TEXT型）を更新する
 //
-//  ■ レスポンス（GET）
-//    { goals: KpiGoal[] }
-//
-//  ■ レスポンス（POST）
-//    { success: true, pageId: string }
+//  ■ DB スキーマ（実際のNotion構成）
+//    KPI名    : title
+//    KPI種別  : select（顧客満足度/売上/社員満足度/業務効率/その他）
+//    目標値   : text  ← number 型ではないので注意
+//    単位     : text  ← select 型ではないので注意
+//    期間     : text  ← select 型ではないので注意
+//    更新日   : date
 // =====================================================
 
 import { NextResponse } from 'next/server'
@@ -24,12 +26,12 @@ const NOTION_VER = '2022-06-28'
 // ── 型定義 ──────────────────────────────────────────
 
 export type KpiGoal = {
-  pageId:   string
-  kpiName:  string
-  kpiType:  string   // KPI種別（解決率・未対応件数など）
-  target:   number   // 目標値
-  unit:     string   // 単位（%・件・ptなど）
-  period:   string   // 期間（月次・四半期・年次）
+  pageId:  string
+  kpiName: string
+  kpiType: string   // 顧客満足度 / 売上 / 社員満足度 / 業務効率 / その他
+  target:  string   // 目標値（TEXT型のため文字列で持つ）
+  unit:    string   // 単位（例: %, pt, 件）
+  period:  string   // 期間（例: 月次, 四半期, 年次）
 }
 
 // ── Notion APIヘルパー ──────────────────────────────
@@ -60,12 +62,12 @@ export async function GET(request: Request) {
   const dbConfig = getCompanyDbConfig(companyId)
 
   try {
-    // KPI目標DB（企業別）から全件取得（企業名フィルタなし）
+    // ✅ title型プロパティはsortキーに使えないため created_time で代替
     const res = await fetch(`${NOTION_API}/databases/${dbConfig.kpiGoalsDbId}/query`, {
       method: 'POST',
       headers: notionHeaders(notionKey),
       body: JSON.stringify({
-        sorts: [{ property: 'KPI名', direction: 'ascending' }],
+        sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
         page_size: 20,
       }),
     })
@@ -83,19 +85,24 @@ export async function GET(request: Request) {
     // Notionレスポンスを KpiGoal に変換
     const goals: KpiGoal[] = data.results.map(page => {
       const props = page.properties as Record<string, {
-        title?:  Array<{ plain_text?: string }>
-        select?: { name?: string }
-        number?: number
+        title?:     Array<{ plain_text?: string }>
+        rich_text?: Array<{ plain_text?: string }>
+        select?:    { name?: string }
       }>
 
-      // 企業別DB方式のプロパティ名にマッピング
+      // title / rich_text の両方に対応する汎用テキスト取得
+      const getText = (p: typeof props[string] | undefined) =>
+        p?.title?.[0]?.plain_text ?? p?.rich_text?.[0]?.plain_text ?? ''
+
       return {
         pageId:  page.id as string,
-        kpiName: props['KPI名']?.title?.[0]?.plain_text  ?? '',
-        kpiType: props['カテゴリ']?.select?.name ?? props['KPI種別']?.select?.name ?? '',
-        target:  props['目標値']?.number                  ?? 0,
-        unit:    props['単位']?.select?.name              ?? '',
-        period:  props['期間']?.select?.name              ?? '',
+        kpiName: getText(props['KPI名']),
+        // KPI種別 は select 型（正しい）
+        kpiType: props['KPI種別']?.select?.name ?? '',
+        // 目標値・単位・期間 は text 型（selectでもnumberでもない）
+        target:  getText(props['目標値']),
+        unit:    getText(props['単位']),
+        period:  getText(props['期間']),
       }
     })
 
@@ -119,7 +126,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json() as {
       pageId:      string  // 更新対象のNotionページID
-      targetValue: number  // 新しい目標値
+      targetValue: string  // 新しい目標値（TEXT型）
     }
     const { pageId, targetValue } = body
 
@@ -130,14 +137,18 @@ export async function POST(request: Request) {
       )
     }
 
-    // Notionページの目標値を更新する
+    // ✅ 目標値は TEXT 型なので rich_text で更新する（number ではない）
     const res = await fetch(`${NOTION_API}/pages/${pageId}`, {
       method: 'PATCH',
       headers: notionHeaders(notionKey),
       body: JSON.stringify({
         properties: {
-          '目標値': { number: targetValue },
-          '更新日': { date: { start: new Date().toISOString().split('T')[0] } },
+          '目標値': {
+            rich_text: [{ text: { content: String(targetValue) } }],
+          },
+          '更新日': {
+            date: { start: new Date().toISOString().split('T')[0] },
+          },
         },
       }),
     })
