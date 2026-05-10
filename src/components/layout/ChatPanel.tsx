@@ -444,6 +444,27 @@ const PAGE_CONTEXTS: Record<string, PageContext> = {
     ],
   },
 
+  // ── 感動KPIダッシュボード — Sprint 45 ──
+  '/company/delight-kpi': {
+    pageTitle: '感動KPI（Delight Score）',
+    description: '感動ログDBを集計し、感動スコア・カテゴリ分布・AIインサイトを表示します。',
+    systemPrompt: `あなたはCoarc Platformの操作サポートAIです。現在のページは「感動KPI（Delight Score）」です。
+このページでは感動ログDBを全件集計し、以下の指標を可視化します。
+- 総感動件数・平均感動スコア（5点満点）・最多感動カテゴリ
+- 感動スコア分布（★1〜★5の件数バーチャート）
+- カテゴリ別件数・平均スコア（棒グラフ）
+- 感動貢献スタッフ TOP5（件数・平均スコア順）
+- 頻出AIタグ TOP6
+- AIインサイト3件（傾向分析） + AI施策提案3件（改善アクション）
+- 「更新」ボタンで最新データを再集計・AIコメントも再生成されます
+回答は400字以内。`,
+    suggestions: [
+      '感動スコアはどう計算されていますか？',
+      'カテゴリ別の分析はどう活用すれば？',
+      '平均スコアを上げるにはどうすれば？',
+    ],
+  },
+
   // ── スタッフパフォーマンスサマリー — Sprint #44 ──
   '/company/staff-performance': {
     pageTitle: 'スタッフパフォーマンス',

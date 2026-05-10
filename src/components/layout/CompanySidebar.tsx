@@ -18,7 +18,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, ArrowLeft, BarChart2, Sun, Sparkles, Users, HeartHandshake, PieChart, Trophy } from 'lucide-react'
+import { ChevronDown, ChevronRight, ArrowLeft, BarChart2, Sun, Sparkles, Users, HeartHandshake, PieChart, Trophy, Zap } from 'lucide-react'
 import {
   getCompanyMenuConfig,
   type CompanyMenuModule,
@@ -147,6 +147,19 @@ export default function CompanySidebar({ companyId }: { companyId: string }) {
         >
           <Sparkles className="w-4 h-4 shrink-0" />
           サービス感動ログ
+        </Link>
+
+        {/* 感動KPI — Sprint 45 */}
+        <Link
+          href={`/company/${companyId}/delight-kpi`}
+          className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+            pathname.startsWith(`/company/${companyId}/delight-kpi`)
+              ? 'bg-indigo-700 text-white font-semibold'
+              : 'text-indigo-200 hover:bg-indigo-800'
+          }`}
+        >
+          <Zap className="w-4 h-4 shrink-0" />
+          感動KPI
         </Link>
 
         {/* 顧客プロフィール — Sprint #41 */}
