@@ -19,10 +19,20 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Wand2, ChevronRight, ChevronLeft, Building2,
   Users, Star, Target, Brain, CheckCircle2,
-  Loader2, RefreshCw, AlertCircle, Save,
+  Loader2, RefreshCw, AlertCircle, Save, ToggleLeft, ToggleRight,
 } from 'lucide-react'
 import { COMPANIES } from '@/config/companies'
+import { getCompanyMenuConfig } from '@/config/company-menu-config'
 import type { HearingData } from '@/app/api/menu-design/hearing/route'
+import type { ProposedModule } from '@/app/api/menu-design/propose/route'
+
+// ── グループ日本語ラベル ───────────────────────────────
+const GROUP_LABELS: Record<string, string> = {
+  'core':           '必須機能',
+  'ai-basic':       'AI拡張 › 基本AIセット',
+  'ai-specialized': 'AI拡張 › 課題特化型AI',
+  'ai-training':    'AI拡張 › 研修・学習',
+}
 
 // ── 定数 ─────────────────────────────────────────────
 
@@ -185,6 +195,15 @@ export default function MenuDesignAgentPage() {
   const [aiSaved,      setAiSaved]      = useState(false)  // AI提案ボタン押下後の完了状態
   const [error,        setError]        = useState('')
 
+  // ── Step 5: AI提案 ──────────────────────────────────
+  type ModuleProposal = ProposedModule & { label: string; group: string }
+
+  const [proposal,        setProposal]        = useState<{ summary: string; modules: ModuleProposal[] } | null>(null)
+  const [proposalLoading, setProposalLoading] = useState(false)
+  const [proposalError,   setProposalError]   = useState('')
+  const [approved,        setApproved]        = useState(false)
+  const [approving,       setApproving]       = useState(false)
+
   // ── 企業選択時に既存ヒアリングデータを読み込む ──
   const loadExisting = useCallback(async (cId: string) => {
     if (!cId) return
@@ -292,7 +311,81 @@ export default function MenuDesignAgentPage() {
   const saveAndRequestAI = async () => {
     const ok = await saveToNotion()
     if (ok) {
-      setAiSaved(true)   // AI提案待ち状態を表示（Sprint #31 で実際の提案処理に差し替え）
+      setAiSaved(true)
+    }
+  }
+
+  // ── AI 提案を取得して Step 5 へ進む ──
+  const fetchProposal = async () => {
+    setProposalLoading(true)
+    setProposalError('')
+    try {
+      const res  = await fetch(`/api/menu-design/propose?companyId=${companyId}`)
+      const data = await res.json() as {
+        success: boolean
+        summary?: string
+        modules?: ProposedModule[]
+        error?:   string
+      }
+      if (data.success && data.modules) {
+        // 企業メニュー設定からラベルとグループを補完
+        const config    = getCompanyMenuConfig(companyId)
+        const moduleMap = new Map(config.modules.map(m => [m.id, m]))
+        const modules: ModuleProposal[] = data.modules.map(m => ({
+          ...m,
+          label: moduleMap.get(m.id)?.label ?? m.id,
+          group: moduleMap.get(m.id)?.group ?? 'core',
+        }))
+        setProposal({ summary: data.summary ?? '', modules })
+        goToStep(5)
+      } else {
+        setProposalError(data.error ?? 'AI 提案の取得に失敗しました')
+      }
+    } catch {
+      setProposalError('通信エラーが発生しました')
+    } finally {
+      setProposalLoading(false)
+    }
+  }
+
+  // ── 提案モジュールの有効/無効をトグル（coreは変更不可）──
+  const toggleProposalModule = (id: string) => {
+    if (!proposal) return
+    const mod = proposal.modules.find(m => m.id === id)
+    if (!mod || mod.group === 'core') return   // coreは必須のため変更不可
+    setProposal(prev => prev ? {
+      ...prev,
+      modules: prev.modules.map(m =>
+        m.id === id ? { ...m, enabled: !m.enabled } : m
+      ),
+    } : null)
+  }
+
+  // ── 承認ボタン：Notion に保存して完了 ──
+  const applyProposal = async () => {
+    if (!proposal || !pageId) return
+    setApproving(true)
+    setProposalError('')
+    try {
+      const res  = await fetch('/api/menu-design/apply', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          companyId,
+          pageId,
+          approvedModules: proposal.modules.filter(m => m.enabled).map(m => m.id),
+        }),
+      })
+      const data = await res.json() as { success: boolean; error?: string }
+      if (data.success) {
+        setApproved(true)
+      } else {
+        setProposalError(data.error ?? '保存に失敗しました')
+      }
+    } catch {
+      setProposalError('通信エラーが発生しました')
+    } finally {
+      setApproving(false)
     }
   }
 
@@ -642,14 +735,35 @@ export default function MenuDesignAgentPage() {
 
           {/* AI提案リクエスト完了表示（「AIに提案してもらう」ボタン押下後） */}
           {aiSaved && !error && (
-            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-1">
+            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-indigo-700">
                 <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                 ヒアリング結果を Notion に保存しました
               </div>
-              <p className="text-xs text-indigo-600 pl-6">
-                Sprint #31 で AI がヒアリング内容を分析し、最適なメニュー構成を提案します。
-              </p>
+              {/* AI提案ローディング中 */}
+              {proposalLoading && (
+                <div className="flex items-center gap-2 text-sm text-indigo-600">
+                  <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                  AI がヒアリング内容を分析中です...
+                </div>
+              )}
+              {/* 提案取得エラー */}
+              {proposalError && !proposalLoading && (
+                <div className="flex items-center gap-2 text-sm text-red-600">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {proposalError}
+                </div>
+              )}
+              {/* 提案を見るボタン */}
+              {!proposalLoading && !proposal && (
+                <button
+                  onClick={fetchProposal}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
+                >
+                  <Wand2 className="w-4 h-4" />
+                  AI 提案を見る →
+                </button>
+              )}
             </div>
           )}
 
@@ -683,6 +797,125 @@ export default function MenuDesignAgentPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Step 5: AI 提案確認・承認 ── */}
+      {step === 5 && proposal && (
+        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+
+          {/* ヘッダー */}
+          <div>
+            <h2 className="text-base font-semibold text-gray-700 flex items-center gap-2">
+              <Wand2 className="w-5 h-5 text-indigo-500" />
+              AI 提案メニュー構成
+            </h2>
+            <div className="mt-2 px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-lg">
+              <p className="text-sm font-medium text-indigo-800">{proposal.summary}</p>
+            </div>
+          </div>
+
+          {/* 操作ガイド */}
+          <p className="text-xs text-gray-500">
+            AI の提案を確認し、必要に応じてトグルで調整してから「承認する」を押してください。
+            <span className="ml-1 font-medium text-indigo-600">必須機能</span>は変更できません。
+          </p>
+
+          {/* グループ別モジュール一覧 */}
+          {(['core', 'ai-basic', 'ai-specialized', 'ai-training'] as const).map(group => {
+            const groupModules = proposal.modules.filter(m => m.group === group)
+            if (groupModules.length === 0) return null
+            return (
+              <div key={group}>
+                {/* グループヘッダー */}
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  {GROUP_LABELS[group]}
+                </h3>
+                <div className="space-y-2">
+                  {groupModules.map(mod => (
+                    <div
+                      key={mod.id}
+                      className={`
+                        flex items-center justify-between p-3 rounded-lg border transition-colors
+                        ${mod.enabled
+                          ? 'bg-indigo-50 border-indigo-200'
+                          : 'bg-gray-50 border-gray-200'}
+                      `}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${mod.enabled ? 'text-gray-800' : 'text-gray-400'}`}>
+                          {mod.label}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">{mod.reason}</p>
+                      </div>
+
+                      {/* core は「必須」バッジ、その他はトグル */}
+                      {group === 'core' ? (
+                        <span className="ml-3 text-xs text-indigo-600 font-medium px-2 py-0.5 bg-indigo-100 rounded-full flex-shrink-0">
+                          必須
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => toggleProposalModule(mod.id)}
+                          className="ml-3 flex-shrink-0 focus:outline-none"
+                          aria-label={mod.enabled ? '無効にする' : '有効にする'}
+                        >
+                          {mod.enabled
+                            ? <ToggleRight className="w-8 h-8 text-indigo-600" />
+                            : <ToggleLeft  className="w-8 h-8 text-gray-300" />
+                          }
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+
+          {/* エラー表示 */}
+          {proposalError && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {proposalError}
+            </div>
+          )}
+
+          {/* 承認完了メッセージ */}
+          {approved && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg space-y-1">
+              <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                承認しました。Notion にメニュー構成を保存しました。
+              </div>
+              <p className="text-xs text-emerald-600 pl-6">
+                Sprint #32 でこの設定がサイドバーに自動反映されます。
+              </p>
+            </div>
+          )}
+
+          {/* ボタン行 */}
+          {!approved && (
+            <div className="flex justify-between pt-2">
+              <button
+                onClick={() => { setProposal(null); goToStep(4) }}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />戻る
+              </button>
+              <button
+                onClick={applyProposal}
+                disabled={approving}
+                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {approving
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <CheckCircle2 className="w-4 h-4" />
+                }
+                この構成を承認する
+              </button>
+            </div>
+          )}
         </div>
       )}
 
