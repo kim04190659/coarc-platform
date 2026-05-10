@@ -155,7 +155,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const companyId = searchParams.get('companyId') ?? 'kitano-resort'
 
-  const notionKey = process.env.NOTION_API_KEY ?? ''
+  // NOTION_TOKEN を優先し、なければ NOTION_API_KEY にフォールバック（他のAPIと統一）
+  const notionKey = process.env.NOTION_TOKEN ?? process.env.NOTION_API_KEY ?? ''
   const anthropicKey = process.env.ANTHROPIC_API_KEY ?? ''
 
   if (!notionKey || !anthropicKey) {
