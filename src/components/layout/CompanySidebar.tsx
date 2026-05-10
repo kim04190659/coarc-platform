@@ -18,7 +18,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react'
+import { ChevronDown, ChevronRight, ArrowLeft, BarChart2 } from 'lucide-react'
 import {
   getCompanyMenuConfig,
   type CompanyMenuModule,
@@ -97,8 +97,9 @@ export default function CompanySidebar({ companyId }: { companyId: string }) {
         </p>
       </div>
 
-      {/* ── 企業ダッシュボードへのリンク ── */}
-      <div className="mb-1">
+      {/* ── 企業ダッシュボード + 業種別KPI（固定リンク） ── */}
+      <div className="mb-1 flex flex-col gap-0.5">
+        {/* 企業ダッシュボード */}
         <Link
           href={`/company/${companyId}`}
           className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
@@ -108,6 +109,19 @@ export default function CompanySidebar({ companyId }: { companyId: string }) {
           }`}
         >
           🏠 企業ダッシュボード
+        </Link>
+
+        {/* 業種別KPI — Sprint #33〜#36 で追加（全企業共通の固定リンク） */}
+        <Link
+          href={`/company/${companyId}/industry-kpi`}
+          className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+            pathname === `/company/${companyId}/industry-kpi`
+              ? 'bg-indigo-700 text-white font-semibold'
+              : 'text-indigo-200 hover:bg-indigo-800'
+          }`}
+        >
+          <BarChart2 className="w-4 h-4 shrink-0" />
+          業種別KPI
         </Link>
       </div>
 
