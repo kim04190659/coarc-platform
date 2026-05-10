@@ -66,103 +66,106 @@ export type CompanyMenuConfig = {
 
 /** companyId を受け取りデフォルトモジュール一覧を生成する */
 function buildDefaultModules(companyId: string): CompanyMenuModule[] {
-  const q = `?companyId=${companyId}`
+  // ★ Sprint #37: 全リンクを /company/${companyId}/[feature] に変更
+  //    企業専用ページはすべて company レイアウト配下に統一し、
+  //    ナビゲーション時に企業ロゴ・サイドバーが維持されるようにする。
+  const base = `/company/${companyId}`
   return [
     // ── 必須機能（core） ────────────────────────────────
     {
       id: 'dashboard',       label: '📊 KPIダッシュボード',
-      href: `/management/dashboard${q}`,
+      href: `${base}/dashboard`,
       icon: LayoutDashboard, group: 'core', enabled: true, priority: 10,
     },
     {
       id: 'customer-feedback', label: '⭐ 顧客フィードバック',
-      href: `/customer/feedback${q}`,
+      href: `${base}/feedback`,
       icon: Star,            group: 'core', enabled: true, priority: 20,
     },
     {
       id: 'customer-contacts', label: '📞 問い合わせ管理',
-      href: `/customer/contacts${q}`,
+      href: `${base}/contacts`,
       icon: Phone,           group: 'core', enabled: true, priority: 30,
     },
     {
       id: 'staff',           label: '💚 社員コンディション',
-      href: `/operations/staff${q}`,
+      href: `${base}/staff`,
       icon: Users,           group: 'core', enabled: true, priority: 40,
     },
     {
       id: 'projects',        label: '📁 プロジェクト管理',
-      href: `/operations/projects${q}`,
+      href: `${base}/projects`,
       icon: FolderOpen,      group: 'core', enabled: true, priority: 50,
     },
     {
       id: 'ai-chat',         label: '💬 AIフリーチャット',
-      href: `/operations/ai-chat${q}`,
+      href: `${base}/ai-chat`,
       icon: MessageCircle,   group: 'core', enabled: true, priority: 60,
     },
 
     // ── AI拡張機能 > 基本AIセット（ai-basic） ──────────────
     {
       id: 'dispatch',        label: '⚡ AIディスパッチ / 育成',
-      href: `/operations/dispatch${q}`,
+      href: `${base}/dispatch`,
       icon: Zap,             group: 'ai-basic', enabled: true, priority: 110,
     },
     {
       id: 'ai-advisor',      label: '🤖 AI経営顧問',
-      href: `/ai-advisor${q}`,
+      href: `${base}/ai-advisor`,
       icon: Brain,           group: 'ai-basic', enabled: true, priority: 120,
     },
     {
       id: 'knowledge',       label: '🔍 AIナレッジ検索',
-      href: `/operations/knowledge${q}`,
+      href: `${base}/knowledge`,
       icon: BookOpen,        group: 'ai-basic', enabled: true, priority: 130,
     },
     {
       id: 'weekly-report',   label: '📋 週次レポート自動生成',
-      href: `/management/weekly-report${q}`,
+      href: `${base}/weekly-report`,
       icon: FileText,        group: 'ai-basic', enabled: true, priority: 140,
     },
     {
       id: 'kpi',             label: '📈 KPI目標管理',
-      href: `/management/kpi${q}`,
+      href: `${base}/kpi`,
       icon: TrendingUp,      group: 'ai-basic', enabled: true, priority: 150,
     },
     {
       id: 'ai-logs',         label: '📜 AIログ分析',
-      href: `/operations/ai-logs${q}`,
+      href: `${base}/ai-logs`,
       icon: ScrollText,      group: 'ai-basic', enabled: true, priority: 160,
     },
 
     // ── AI拡張機能 > 課題特化型AI（ai-specialized） ─────────
     {
       id: 'churn-risk',      label: '⚠️ 顧客離反リスクAI',
-      href: `/ai-ext/churn-risk${q}`,
+      href: `${base}/churn-risk`,
       icon: TrendingDown,    group: 'ai-specialized', enabled: true, priority: 210,
     },
     {
       id: 'cs-quality',      label: '🎯 CS品質スコアAI',
-      href: `/ai-ext/cs-quality${q}`,
+      href: `${base}/cs-quality`,
       icon: ShieldAlert,     group: 'ai-specialized', enabled: true, priority: 220,
     },
     {
       id: 'staff-turnover',  label: '🔴 社員離職リスクAI',
-      href: `/ai-ext/staff-turnover${q}`,
+      href: `${base}/staff-turnover`,
       icon: UserMinus,       group: 'ai-specialized', enabled: true, priority: 230,
     },
     {
       id: 'sales-forecast',  label: '📊 売上予測AI',
-      href: `/ai-ext/sales-forecast${q}`,
+      href: `${base}/sales-forecast`,
       icon: TrendingUp,      group: 'ai-specialized', enabled: true, priority: 240,
     },
 
     // ── AI拡張機能 > 研修・学習（ai-training） ─────────────
     {
       id: 'skill-game',      label: '🎮 スキル向上ゲーム',
-      href: `/skill-game/select${q}`,
+      href: `${base}/skill-game`,
       icon: Gamepad2,        group: 'ai-training', enabled: true, priority: 310,
     },
     {
       id: 'training-log',    label: '📚 研修ログ管理',
-      href: `/operations/training${q}`,
+      href: `${base}/training`,
       icon: GraduationCap,   group: 'ai-training', enabled: true, priority: 320,
     },
   ]

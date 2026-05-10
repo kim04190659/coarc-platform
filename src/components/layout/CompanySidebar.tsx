@@ -57,11 +57,23 @@ export default function CompanySidebar({ companyId }: { companyId: string }) {
   const config   = getCompanyMenuConfig(companyId)
   const company  = getCompanyById(companyId)
 
-  // AI拡張機能セクションのトグル状態
-  const [aiOpen, setAiOpen] = useState(false)
+  // 現在のパスが AI拡張機能配下かどうか（自動展開用）
+  const isOnAiPage = pathname.includes('/ai-advisor') ||
+    pathname.includes('/knowledge') || pathname.includes('/weekly-report') ||
+    pathname.includes('/kpi') || pathname.includes('/dispatch') ||
+    pathname.includes('/ai-logs') || pathname.includes('/churn-risk') ||
+    pathname.includes('/cs-quality') || pathname.includes('/staff-turnover') ||
+    pathname.includes('/sales-forecast')
 
-  // パスが一致するか（クエリは無視）
-  const isActive = (href: string) => pathname === href.split('?')[0]
+  // AI拡張機能セクションのトグル状態（AI系ページでは自動展開）
+  const [aiOpen, setAiOpen] = useState(isOnAiPage)
+
+  // パスが一致するか（プレフィックスマッチ — /projects/[id] 等のネストを考慮）
+  const isActive = (href: string) => {
+    const clean = href.split('?')[0]
+    // 完全一致 OR 前方一致（projects/[id] 等のサブルート対応）
+    return pathname === clean || pathname.startsWith(clean + '/')
+  }
 
   // 有効モジュールをグループ別に分類
   const coreModules    = config.modules.filter(m => m.enabled && m.group === 'core')
