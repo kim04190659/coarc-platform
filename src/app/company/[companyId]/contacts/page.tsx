@@ -30,7 +30,7 @@ import {
   MessageSquare, Phone, Globe, Store, Smartphone,
   Sparkles, Clock, CheckCircle2, AlertCircle,
   ChevronRight, Copy, Check, Save, ExternalLink,
-  ChevronDown,
+  ChevronDown, Bot, Send, ShieldAlert, Star,
 } from 'lucide-react'
 
 // ──────────────────────────────────────────────────
@@ -157,6 +157,8 @@ export default function ContactsPage() {
     setSelectedId(baseContacts[0]?.id ?? null)
     setDraft('')
     setNotionUrl('')
+    setCoachingSituation('')    // コーチングもリセット
+    setCoachingResult(null)
   }, [companyId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
@@ -225,6 +227,42 @@ export default function ContactsPage() {
   const [syncingContactId, setSyncingContactId] = useState<string | null>(null)
   const [syncResultMap, setSyncResultMap] = useState<Record<string, 'ok' | 'error'>>({})
 
+  // AIコーチング状態 — Sprint #40
+  const [coachingSituation, setCoachingSituation] = useState<string>('')
+  const [isCoaching, setIsCoaching] = useState(false)
+  type CoachingResult = {
+    phrase: string
+    cautions: string[]
+    successPatterns: string[]
+    similarCount: number
+  }
+  const [coachingResult, setCoachingResult] = useState<CoachingResult | null>(null)
+
+  /** コーチング提案を取得する */
+  const getCoachingSuggestion = useCallback(async () => {
+    if (!selected || !coachingSituation.trim()) return
+    setIsCoaching(true)
+    setCoachingResult(null)
+    try {
+      const res = await fetch(`/api/coaching/suggest?companyId=${companyId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          situation:       coachingSituation,
+          contactCategory: selected.category,
+          contactContent:  selected.content,
+          contactPriority: selected.priority,
+        }),
+      })
+      const data = await res.json() as CoachingResult
+      setCoachingResult(data)
+    } catch {
+      setCoachingResult(null)
+    } finally {
+      setIsCoaching(false)
+    }
+  }, [selected, coachingSituation, companyId])
+
   const filtered = contacts.filter(c => {
     if (filterStatus !== 'all' && c.status !== filterStatus) return false
     if (filterCategory !== 'all' && c.category !== filterCategory) return false
@@ -239,6 +277,8 @@ export default function ContactsPage() {
     setCopied(false)
     setNotionUrl('')
     setSaveError('')
+    setCoachingSituation('')   // コーチングパネルもリセット
+    setCoachingResult(null)
   }, [])
 
   // AI下書き生成
@@ -543,6 +583,98 @@ export default function ContactsPage() {
                 <p className="text-xs text-gray-400 bg-gray-50 rounded-lg p-3">
                   「AI下書きを生成」を押すと、この問い合わせに合わせた返信文の下書きをAIが自動作成します。
                   生成後は編集してコピー、またはそのままNotionに保存できます。
+                </p>
+              )}
+            </div>
+
+            {/* ── AIコーチングパネル — Sprint #40 ── */}
+            <div className="border-t border-gray-100 pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Bot className="w-4 h-4 text-violet-500" />
+                <p className="text-xs font-semibold text-gray-600">🤖 AIリアルタイムコーチ</p>
+                {coachingResult && (
+                  <span className="text-xs text-violet-500 bg-violet-50 px-2 py-0.5 rounded-full">
+                    類似事例 {coachingResult.similarCount}件参照
+                  </span>
+                )}
+              </div>
+
+              {/* 状況入力エリア */}
+              <div className="relative">
+                <textarea
+                  value={coachingSituation}
+                  onChange={e => setCoachingSituation(e.target.value)}
+                  placeholder="今の状況を入力してください（例: お客様が予約内容と異なると怒っている）"
+                  rows={2}
+                  className="w-full border border-violet-200 rounded-lg p-3 text-sm text-gray-700 leading-relaxed resize-none focus:outline-none focus:border-violet-400 bg-violet-50 placeholder-gray-400"
+                />
+                <button
+                  onClick={getCoachingSuggestion}
+                  disabled={isCoaching || !coachingSituation.trim()}
+                  className="mt-2 flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {isCoaching ? 'AIが考えています...' : 'ベストアクションを提案する'}
+                </button>
+              </div>
+
+              {/* コーチング結果表示 */}
+              {isCoaching && (
+                <div className="mt-3 bg-violet-50 rounded-lg p-4 text-sm text-violet-600 animate-pulse">
+                  AIが最適な対応を考えています...
+                </div>
+              )}
+
+              {!isCoaching && coachingResult && (
+                <div className="mt-3 space-y-3">
+                  {/* 推奨フレーズ */}
+                  <div className="bg-violet-50 border border-violet-200 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-violet-600 mb-1.5 flex items-center gap-1">
+                      <Star className="w-3 h-3" /> 💡 推奨フレーズ（最初の一言）
+                    </p>
+                    <p className="text-sm text-gray-800 font-medium">
+                      &ldquo;{coachingResult.phrase}&rdquo;
+                    </p>
+                  </div>
+
+                  {/* 注意点 */}
+                  {coachingResult.cautions.length > 0 && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                      <p className="text-xs font-semibold text-orange-600 mb-1.5 flex items-center gap-1">
+                        <ShieldAlert className="w-3 h-3" /> ⚠️ 注意点
+                      </p>
+                      <ul className="space-y-1">
+                        {coachingResult.cautions.map((c, i) => (
+                          <li key={i} className="text-xs text-orange-800 flex items-start gap-1.5">
+                            <span className="shrink-0 mt-0.5">•</span>{c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* 過去の成功パターン */}
+                  {coachingResult.successPatterns.length > 0 && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-xs font-semibold text-green-600 mb-1.5">
+                        📚 過去の成功パターン
+                      </p>
+                      <ul className="space-y-1">
+                        {coachingResult.successPatterns.map((p, i) => (
+                          <li key={i} className="text-xs text-green-800 flex items-start gap-1.5">
+                            <span className="shrink-0 mt-0.5">•</span>{p}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!isCoaching && !coachingResult && (
+                <p className="mt-2 text-xs text-gray-400 bg-gray-50 rounded-lg p-3">
+                  現在の状況を入力すると、AIが推奨フレーズ・注意点・過去の成功パターンをリアルタイムで提案します。
+                  感動ログの事例もコンテキストに活用します。
                 </p>
               )}
             </div>
