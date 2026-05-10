@@ -18,7 +18,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, ArrowLeft, BarChart2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, ArrowLeft, BarChart2, Sun } from 'lucide-react'
 import {
   getCompanyMenuConfig,
   type CompanyMenuModule,
@@ -109,7 +109,7 @@ export default function CompanySidebar({ companyId }: { companyId: string }) {
         </p>
       </div>
 
-      {/* ── 企業ダッシュボード + 業種別KPI（固定リンク） ── */}
+      {/* ── 企業ダッシュボード + 固定リンク群 ── */}
       <div className="mb-1 flex flex-col gap-0.5">
         {/* 企業ダッシュボード */}
         <Link
@@ -121,6 +121,19 @@ export default function CompanySidebar({ companyId }: { companyId: string }) {
           }`}
         >
           🏠 企業ダッシュボード
+        </Link>
+
+        {/* AIモーニングブリーフィング — Sprint #38 */}
+        <Link
+          href={`/company/${companyId}/morning-brief`}
+          className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+            pathname.startsWith(`/company/${companyId}/morning-brief`)
+              ? 'bg-indigo-700 text-white font-semibold'
+              : 'text-indigo-200 hover:bg-indigo-800'
+          }`}
+        >
+          <Sun className="w-4 h-4 shrink-0" />
+          今日のブリーフィング
         </Link>
 
         {/* 業種別KPI — Sprint #33〜#36 で追加（全企業共通の固定リンク） */}

@@ -15,7 +15,7 @@
 
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle2, AlertCircle, Wand2 } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Wand2, Sun, ChevronRight } from 'lucide-react'
 import { getCompanyById } from '@/config/companies'
 import { getCompanyMenuConfig, getEnabledModules } from '@/config/company-menu-config'
 
@@ -83,6 +83,26 @@ export default function CompanyPage() {
           {INDUSTRY_LABELS[company.industry] ?? 'サービス業'}
         </p>
       </div>
+
+      {/* ── AIモーニングブリーフィングバナー（Sprint #38） ── */}
+      <Link
+        href={`/company/${companyId}/morning-brief`}
+        className="flex items-center gap-4 p-4 rounded-xl
+                   bg-gradient-to-r from-indigo-600 to-violet-600
+                   hover:from-indigo-700 hover:to-violet-700
+                   transition-all group"
+      >
+        <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+          <Sun className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-white">今日のAIブリーフィング</p>
+          <p className="text-xs text-indigo-200 mt-0.5 truncate">
+            AIが今日の状況を分析・要約しました。タップして確認
+          </p>
+        </div>
+        <ChevronRight className="w-4 h-4 text-indigo-300 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
+      </Link>
 
       {/* ── ヒアリングステータスバナー ── */}
       {config.hearingCompletedAt ? (
