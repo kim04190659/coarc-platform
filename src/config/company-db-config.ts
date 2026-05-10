@@ -109,7 +109,7 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
     // ── 顧客管理 ──────────────────────────────────────
     customerFeedbackDbId: 'f267462f4b104a0690e2d310353b30d8',
     serviceContactDbId:   'f049100f0ef842be818fdb28cdc6bf68',
-    customerProfileDbId:  '',
+    customerProfileDbId:  '3c5282b9b648475594941add24652c2e',  // Sprint #41 登録済み
 
     // ── 社員管理 ──────────────────────────────────────
     staffProfileDbId:   'fac9284b779942888e892ca49d6b1e42',  // Sprint #15 登録済み
@@ -145,7 +145,7 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
   'sakura-medical': {
     customerFeedbackDbId: '7a4444ffa8c34e3f866aedecfcb2c95a',
     serviceContactDbId:   'd4507f62e1b4477a9b22fc8e48d50d48',
-    customerProfileDbId:  '',
+    customerProfileDbId:  '1ee80c02a22e4af582943608a8dac73f',  // Sprint #41 登録済み
 
     staffProfileDbId:   '06729c0a6ac141b2a3ef91b298750047',  // Sprint #15 登録済み
     staffConditionDbId: '9856119a99014c4a9f7b6cff35ebee0a',  // Sprint #15 登録済み
@@ -176,7 +176,7 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
   'mensho-food': {
     customerFeedbackDbId: '30b8a58e10d34cfbb33cd3cabb3f953b',
     serviceContactDbId:   '04c998d12c774d9a810d8ea18f9e1816',
-    customerProfileDbId:  '',
+    customerProfileDbId:  '759ce79011364aedbece82d68dcb477d',  // Sprint #41 登録済み
 
     staffProfileDbId:   '1b04bdf965be4996b346f6b296d588dc',  // Sprint #15 登録済み
     staffConditionDbId: '33b4dd61bf344d5e8e892d9eb7174348',  // Sprint #15 登録済み
@@ -207,7 +207,7 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
   'hanamaru-store': {
     customerFeedbackDbId: 'eb5db63ce8784d71b33888a244fd86b7',
     serviceContactDbId:   'fd2bd7550a95416fa4f2d609333ebea2',
-    customerProfileDbId:  '',
+    customerProfileDbId:  '65f5a2f7db4b416fbf011f779e5f4a10',  // Sprint #41 登録済み
 
     staffProfileDbId:   '096c8ce43a7f45089dd8613f9a5d9ab5',  // Sprint #15 登録済み
     staffConditionDbId: '11b071a51eff4976ac65f4658cbb4249',  // Sprint #15 登録済み
