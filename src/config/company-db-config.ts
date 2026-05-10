@@ -87,6 +87,10 @@ export type CompanyDbConfig = {
   // ── AI ログ ───────────────────────────────────────
   /** 🤖 AI質問ログDB（フリーチャット・各AIページの質問履歴）Sprint #18 登録済み */
   aiChatLogDbId: string
+
+  // ── 感動ログ ──────────────────────────────────────
+  /** 💫 感動ログDB（スタッフが顧客との感動の瞬間を記録）Sprint #39 登録済み */
+  delightLogDbId: string
 }
 
 // ──────────────────────────────────────────────────
@@ -128,6 +132,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
 
     // ── AI ログ ───────────────────────────────────────
     aiChatLogDbId: '0506209381de48e897c8963deda23057',  // Sprint #18 登録済み
+
+    // ── 感動ログ ──────────────────────────────────────
+    delightLogDbId: 'f58e85598148494ab06fb4658b0a6e62',  // Sprint #39 登録済み
   },
 
   // ══════════════════════════════════════════════════
@@ -156,6 +163,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
 
     // ── AI ログ ───────────────────────────────────────
     aiChatLogDbId: 'aa764bf1ccfa4936bc38d383b1e5288f',  // Sprint #18 登録済み
+
+    // ── 感動ログ ──────────────────────────────────────
+    delightLogDbId: '1044e126f01d40858540235d3b7f4a56',  // Sprint #39 登録済み
   },
 
   // ══════════════════════════════════════════════════
@@ -184,6 +194,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
 
     // ── AI ログ ───────────────────────────────────────
     aiChatLogDbId: 'f82fa296c28f421cbb9f09669ff081ec',  // Sprint #18 登録済み
+
+    // ── 感動ログ ──────────────────────────────────────
+    delightLogDbId: '8eb5b43218344ba9be659a28cecc6884',  // Sprint #39 登録済み
   },
 
   // ══════════════════════════════════════════════════
@@ -212,6 +225,9 @@ export const COMPANY_DB_CONFIG: Record<string, CompanyDbConfig> = {
 
     // ── AI ログ ───────────────────────────────────────
     aiChatLogDbId: 'd689c7a5dff14460a47bda3818aa6f97',  // Sprint #18 登録済み
+
+    // ── 感動ログ ──────────────────────────────────────
+    delightLogDbId: '18aa2b1cd3cc485f812c6fd648da5b79',  // Sprint #39 登録済み
   },
 }
 
@@ -234,5 +250,6 @@ export function getCompanyDbConfig(companyId: string): CompanyDbConfig {
     projectTaskDbId:       '',
     companyProfileDbId:    '',
     aiChatLogDbId:         '',
+    delightLogDbId:        '',
   }
 }

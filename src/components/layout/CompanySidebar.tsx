@@ -18,7 +18,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, ArrowLeft, BarChart2, Sun } from 'lucide-react'
+import { ChevronDown, ChevronRight, ArrowLeft, BarChart2, Sun, Sparkles } from 'lucide-react'
 import {
   getCompanyMenuConfig,
   type CompanyMenuModule,
@@ -134,6 +134,19 @@ export default function CompanySidebar({ companyId }: { companyId: string }) {
         >
           <Sun className="w-4 h-4 shrink-0" />
           今日のブリーフィング
+        </Link>
+
+        {/* サービス感動ログ — Sprint #39 */}
+        <Link
+          href={`/company/${companyId}/delight-log`}
+          className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+            pathname.startsWith(`/company/${companyId}/delight-log`)
+              ? 'bg-indigo-700 text-white font-semibold'
+              : 'text-indigo-200 hover:bg-indigo-800'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 shrink-0" />
+          サービス感動ログ
         </Link>
 
         {/* 業種別KPI — Sprint #33〜#36 で追加（全企業共通の固定リンク） */}
