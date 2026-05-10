@@ -408,6 +408,24 @@ const PAGE_CONTEXTS: Record<string, PageContext> = {
     ],
   },
 
+  // ── 企業別ポータル — Sprint #32 ──
+  '/company': {
+    pageTitle: '企業ポータル',
+    description: '企業ごとに承認されたAI機能メニューを確認できます。',
+    systemPrompt: `あなたはCoarc Platformの操作サポートAIです。現在のページは「企業ポータル」です。
+このページでは、メニュー設計エージェントで承認したAI機能メニューをカード形式で確認できます。
+- 各機能カードをクリックすると該当の機能ページに移動できます
+- ヒアリングが未実施の場合は全機能が表示されます
+- メニュー設計エージェントでヒアリングを行うと、最適な機能セットに絞り込めます
+- 「管理画面に戻る」リンクから全社共通の管理画面に戻れます
+回答は400字以内。`,
+    suggestions: [
+      '表示されている機能の使い方は？',
+      'ヒアリングはどこから実施できますか？',
+      'AI機能を追加・変更するには？',
+    ],
+  },
+
   // ── システムヘルス ──
   '/admin/system-health': {
     pageTitle: 'システムヘルス監視',
@@ -518,8 +536,10 @@ export default function ChatPanel({ isOpen, onClose }: ChatPanelProps) {
   // クエリパラメータを除いたパスを取得
   const cleanPath = pathname.split('?')[0]
 
-  // 現在のページコンテキストを取得（なければデフォルト）
-  const ctx: PageContext = PAGE_CONTEXTS[cleanPath] ?? {
+  // 現在のページコンテキストを取得（なければプレフィックスマッチ → デフォルト）
+  // /company/[companyId] のような動的ルートはプレフィックス（/company）でフォールバック
+  const prefixKey = '/' + cleanPath.split('/').filter(Boolean)[0]
+  const ctx: PageContext = PAGE_CONTEXTS[cleanPath] ?? PAGE_CONTEXTS[prefixKey] ?? {
     pageTitle: 'Coarc Platform',
     description: 'このページの使い方を質問できます。',
     systemPrompt: '',

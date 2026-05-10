@@ -201,31 +201,32 @@ export const FEATURES: Feature[] = [
   },
 
   // ===== 企業別（company） =====
+  // Sprint #32: /company/[companyId] 専用ポータルへのリンクに変更
   {
     id:    'company-kitano',
     label: '🏨 北野リゾートホテル',
-    href:  '/management/dashboard?companyId=kitano-resort',
+    href:  '/company/kitano-resort',
     icon:  Building2,
     group: 'company',
   },
   {
     id:    'company-sakura',
     label: '🏥 さくら医療グループ',
-    href:  '/management/dashboard?companyId=sakura-medical',
+    href:  '/company/sakura-medical',
     icon:  Building2,
     group: 'company',
   },
   {
     id:    'company-mensho',
     label: '🍽️ 麺屋フードチェーン',
-    href:  '/management/dashboard?companyId=mensho-food',
+    href:  '/company/mensho-food',
     icon:  Building2,
     group: 'company',
   },
   {
     id:    'company-hanamaru',
     label: '🛒 ハナマルストア',
-    href:  '/management/dashboard?companyId=hanamaru-store',
+    href:  '/company/hanamaru-store',
     icon:  Building2,
     group: 'company',
   },
